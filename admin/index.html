@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — MBIRE TV ZIMBABWE</title>
+  <link rel="icon" type="image/png" href="../images/logo.png">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="../js/firebase.js"></script>
+</head>
+<body class="light-mode">
+
+  <!-- Admin Layout -->
+  <div class="admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="sidebar-logo">
+        <img src="../images/logo.png" alt="MBIRE TV" onerror="this.style.display='none'">
+        <div>
+          <div class="sidebar-logo-text">MBIRE TV</div>
+          <div class="sidebar-logo-sub">Zimbabwe Admin</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-label">Dashboard</div>
+        <a href="index.html" class="sidebar-link active">
+          <span class="icon"><i class="fas fa-home"></i></span> Overview
+        </a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Content</div>
+        <a href="post-news.html" class="sidebar-link">
+          <span class="icon"><i class="fas fa-pen-nib"></i></span> Post News
+        </a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Management</div>
+        <a href="manage-users.html" class="sidebar-link">
+          <span class="icon"><i class="fas fa-users"></i></span> Manage Users
+        </a>
+        <a href="manage-comments.html" class="sidebar-link">
+          <span class="icon"><i class="fas fa-comments"></i></span> Manage Comments
+        </a>
+        <a href="manage-submissions.html" class="sidebar-link">
+          <span class="icon"><i class="fas fa-paper-plane"></i></span> User Submissions
+        </a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Site</div>
+        <a href="../index.html" class="sidebar-link">
+          <span class="icon"><i class="fas fa-globe"></i></span> View Website
+        </a>
+        <a href="#" class="sidebar-link" onclick="handleAdminLogout()">
+          <span class="icon"><i class="fas fa-sign-out-alt"></i></span> Logout
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content Panel -->
+    <main class="admin-main">
+      
+      <!-- Header -->
+      <div class="admin-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="mob-menu-btn" onclick="toggleMobileSidebar()"><i class="fas fa-bars"></i> Menu</button>
+          <div>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:2px; letter-spacing:1px; text-transform:uppercase;">Welcome Back</p>
+            <h1 class="admin-title">Admin Overview</h1>
+          </div>
+        </div>
+        <div style="display:flex; gap:12px; align-items:center;">
+          <a href="post-news.html" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus"></i> Post News
+          </a>
+        </div>
+      </div>
+
+      <!-- Stat summary Cards -->
+      <div class="stat-cards">
+        <div class="stat-card" onclick="document.getElementById('articlesTable').scrollIntoView({behavior: 'smooth'})">
+          <span class="stat-card-icon">📰</span>
+          <span class="stat-card-value" id="statArticles">0</span>
+          <span class="stat-card-label">Total Articles</span>
+          <span class="stat-card-change"><i class="fas fa-chart-line"></i> Active Posts</span>
+        </div>
+        <div class="stat-card" onclick="location.href='manage-users.html'">
+          <span class="stat-card-icon">👥</span>
+          <span class="stat-card-value" id="statUsers">0</span>
+          <span class="stat-card-label">Registered Users</span>
+          <span class="stat-card-change"><i class="fas fa-user-plus"></i> Total Members</span>
+        </div>
+        <div class="stat-card" onclick="location.href='manage-comments.html'">
+          <span class="stat-card-icon">💬</span>
+          <span class="stat-card-value" id="statComments">0</span>
+          <span class="stat-card-label">User Comments</span>
+          <span class="stat-card-change"><i class="fas fa-comment-dots"></i> Total Posted</span>
+        </div>
+        <div class="stat-card" onclick="location.href='manage-submissions.html'">
+          <span class="stat-card-icon">✉️</span>
+          <span class="stat-card-value" id="statSubmissions">0</span>
+          <span class="stat-card-label">User Submissions</span>
+          <span class="stat-card-change"><i class="fas fa-envelope-open-text"></i> Story Tips</span>
+        </div>
+      </div>
+
+      <!-- Articles Management Grid -->
+      <div class="admin-card">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+          <h2 style="font-family:var(--font-title); font-size:1.1rem; font-weight:700; letter-spacing:1px; text-transform:uppercase;">Recent News Articles</h2>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="articlesTable">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Author</th>
+                <th>Views</th>
+                <th>Date Published</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="articlesTableBody">
+              <tr>
+                <td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">
+                  <i class="fas fa-spinner fa-spin" style="font-size:1.5rem; color:var(--red); margin-bottom:8px; display:block;"></i>
+                  Loading recent news articles...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+
+  </div>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // Guard: check if administrator role
+    const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
+    if (!user || user.role !== 'superadmin') {
+      location.href = '../login.html';
+    }
+
+    // Explicitly light mode
+    document.body.classList.add('light-mode');
+
+    // Mobile sidebar toggle
+    function toggleMobileSidebar() {
+      document.getElementById('adminSidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    let articlesList = [];
+
+    // Animated count utility
+    function animateCount(el, target) {
+      if (!el) return;
+      let count = 0;
+      const step = Math.max(1, Math.ceil(target / 30));
+      const timer = setInterval(() => {
+        count += step;
+        if (count >= target) {
+          count = target;
+          clearInterval(timer);
+        }
+        el.textContent = count;
+      }, 25);
+    }
+
+    // Load admin metrics
+    async function loadDashboardMetrics() {
+      articlesList = await fsGetArticles(100);
+      const users = await fsGetUsers();
+      const comments = await fsGetComments();
+      const submissions = await fsGetSubmissions();
+
+      animateCount(document.getElementById('statArticles'), articlesList.length);
+      animateCount(document.getElementById('statUsers'), users.length);
+      animateCount(document.getElementById('statComments'), comments.length);
+      animateCount(document.getElementById('statSubmissions'), submissions.length);
+
+      renderArticlesTable();
+    }
+
+    // Render articles rows
+    function renderArticlesTable() {
+      const tbody = document.getElementById('articlesTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (articlesList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">No news articles created yet. Click "Post News" to write one.</td></tr>`;
+        return;
+      }
+
+      articlesList.forEach(art => {
+        const dateStr = new Date(art.date).toLocaleDateString();
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="font-weight:600; color:var(--text);">${art.title}</td>
+          <td><span style="background:rgba(229,9,20,0.1); color:var(--red); padding:2px 8px; border-radius:4px; font-size:0.75rem; text-transform:uppercase; font-family:var(--font-title); font-weight:600;">${art.cat}</span></td>
+          <td>${art.author || 'MBIRE TV'}</td>
+          <td><i class="far fa-eye"></i> ${art.views || 0}</td>
+          <td style="font-size:0.8rem; color:var(--text-muted);">${dateStr}</td>
+          <td>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-ghost btn-sm" title="Edit Article" onclick="location.href='post-news.html?edit=${art.id}'"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--red);" title="Delete Article" onclick="deleteArticlePost('${art.id}')"><i class="fas fa-trash"></i></button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Delete Article handler
+    window.deleteArticlePost = async function(id) {
+      if (!confirm('Are you sure you want to permanently delete this news article?')) return;
+      try {
+        await fsDeleteArticle(id);
+        articlesList = articlesList.filter(a => a.id !== id);
+        renderArticlesTable();
+        
+        // Update count badge
+        const statArt = document.getElementById('statArticles');
+        if (statArt) statArt.textContent = articlesList.length;
+        
+        showToast('Article deleted successfully.', '🗑️');
+      } catch (err) {
+        console.error(err);
+        showToast('Error deleting article. Try again.', '❌');
+      }
+    };
+
+    function handleAdminLogout() {
+      localStorage.removeItem('mbire_user');
+      location.href = '../login.html';
+    }
+
+    function showToast(msg, icon = '✅') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<span>${icon}</span><span class="toast-msg">${msg}</span>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+
+    // Run loads
+    loadDashboardMetrics();
+  </script>
+</body>
+</html>

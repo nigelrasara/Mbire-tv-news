@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Article — MBIRE TV ZIMBABWE</title>
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase.js"></script>
+  <style>
+    .article-container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .article-header {
+      margin-bottom: 24px;
+    }
+    .article-title {
+      font-family: var(--font-title);
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+      font-weight: 700;
+      line-height: 1.25;
+      margin-bottom: 16px;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .article-banner {
+      width: 100%;
+      aspect-ratio: 16/9;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 32px;
+      border: 1px solid var(--border);
+      cursor: zoom-in;
+      transition: border-color var(--t);
+    }
+    .article-banner:hover {
+      border-color: var(--red);
+    }
+    .article-banner img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .article-content {
+      font-size: 1.05rem;
+      line-height: 1.8;
+      color: var(--text-dim);
+      margin-bottom: 48px;
+    }
+    .article-content p {
+      margin-bottom: 20px;
+    }
+    .comments-section {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin-bottom: 40px;
+    }
+    .comment-form {
+      margin-top: 24px;
+      margin-bottom: 32px;
+    }
+    .comments-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .comment-item {
+      display: flex;
+      gap: 16px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .comment-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .comment-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--red);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-title);
+      font-weight: 700;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .comment-body {
+      flex: 1;
+    }
+    .comment-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .comment-user {
+      font-family: var(--font-title);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.5px;
+    }
+    .comment-date {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .comment-text {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body class="light-mode">
+
+  <!-- Top Moving Ticker -->
+  <div class="breaking-ticker">
+    <div class="ticker-label"><span>⚡ BREAKING</span></div>
+    <div class="ticker-content">
+      <div class="ticker-track" id="tickerTrack">
+        <span class="ticker-item">MBIRE TV ZIMBABWE &mdash; The most independent Zimbabwean news channel. Subscribe to our YouTube channel! <span class="ticker-separator">●</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="nav-logo">
+      <img src="images/logo.png" alt="MBIRE TV Logo" onerror="this.style.display='none'">
+      <div class="nav-logo-text">
+        <span class="brand">MBIRE TV</span>
+        <span class="tagline">ZIMBABWE'S VOICE</span>
+      </div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="news.html" class="active">News Articles</a></li>
+      <li><a href="videos.html">Videos</a></li>
+      <li><a href="live.html" class="live-link"><span class="live-dot"></span>Live Broadcast</a></li>
+      <li><a href="submit-news.html">Submit News</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="login.html" class="btn-login" id="navLoginBtn">Login</a>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <div class="mobile-nav" id="mobileNav">
+    <a href="index.html">Home</a>
+    <a href="news.html">News Articles</a>
+    <a href="videos.html">Videos</a>
+    <a href="live.html">Live Broadcast</a>
+    <a href="submit-news.html">Submit News</a>
+    <a href="login.html" id="mobLoginBtn">Login</a>
+  </div>
+
+  <main class="page-wrapper">
+    <div class="article-container" id="articleWrapper">
+      
+      <button class="btn btn-ghost btn-sm" onclick="history.back()" style="margin-bottom:24px;">
+        <i class="fas fa-arrow-left"></i> Go Back
+      </button>
+
+      <article id="articleDetail">
+        <!-- Header -->
+        <div class="article-header">
+          <span class="card-category" style="position:static; margin-bottom:12px; display:inline-block; background:var(--green);" id="articleCat">General</span>
+          <h1 class="article-title" id="articleTitle">Loading Headline...</h1>
+          <div class="card-meta">
+            <span class="card-date" id="articleDate"><i class="far fa-clock"></i> Recent</span>
+            <span class="card-dot">●</span>
+            <span class="card-author">By <span id="articleAuthor">MBIRE TV</span></span>
+          </div>
+        </div>
+
+        <!-- Banner cover image (Click to view Lightbox) -->
+        <div class="article-banner" id="articleImageWrapper">
+          <img src="" alt="News Image" id="articleImage">
+        </div>
+
+        <!-- Body content -->
+        <div class="article-content" id="articleContent">
+          <p>Please wait, loading article story...</p>
+        </div>
+      </article>
+
+      <!-- Comments System Section -->
+      <section class="comments-section">
+        <h3 class="font-oswald uppercase ls-2" style="font-size:1.1rem; margin-bottom:20px;">
+          Comments (<span id="commentCount">0</span>)
+        </h3>
+
+        <!-- Comment Input form -->
+        <div class="comment-form" id="commentForm">
+          <div class="form-group">
+            <textarea class="form-textarea" id="commentInput" placeholder="Write a comment... (Any comment posted appears immediately)" style="min-height:80px;"></textarea>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:0.78rem; color:var(--text-muted);" id="commentUserBadge">Posting as Guest User</span>
+            <button class="btn btn-primary btn-sm" onclick="postNewComment()">Post Comment</button>
+          </div>
+        </div>
+
+        <!-- Comments List Grid -->
+        <div class="comments-list" id="commentsListGrid">
+          <!-- Comments render dynamically -->
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Lightbox Fullscreen Popup -->
+  <div class="lightbox" id="imageLightbox" onclick="closeLightbox()">
+    <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+    <img src="" class="lightbox-content" id="lightboxImage" onclick="event.stopPropagation()">
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Footer Section -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="images/logo.png" alt="MBIRE TV Logo" onerror="this.style.display='none'">
+          <p class="footer-tagline">ZIMBABWE'S VOICE</p>
+          <p class="footer-desc">Mbire TV Zimbabwe is a dynamic independent media channel dedicated to delivering credible news reports, YouTube video coverage, and interactive community news submissions.</p>
+          <div class="social-links">
+            <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="social-link" title="YouTube"><i class="fab fa-youtube"></i></a>
+            <a href="https://wa.me/27783657892" target="_blank" class="social-link" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+            <a href="mailto:mbiretvnews@gmail.com" class="social-link" title="Email"><i class="fas fa-envelope"></i></a>
+          </div>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Contact Information</h4>
+          <div class="footer-contacts">
+            <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="footer-contact-item footer-contact-link">
+              <span class="icon"><i class="fab fa-youtube"></i></span>
+              <span>youtube.com/@MBIRETVNews</span>
+            </a>
+            <a href="https://wa.me/27783657892" target="_blank" class="footer-contact-item footer-contact-link">
+              <span class="icon" style="color:#25d366;"><i class="fab fa-whatsapp"></i></span>
+              <span>+27 78 365 7892</span>
+            </a>
+            <a href="mailto:mbiretvnews@gmail.com" class="footer-contact-item footer-contact-link">
+              <span class="icon"><i class="fas fa-envelope"></i></span>
+              <span>mbiretvnews@gmail.com</span>
+            </a>
+          </div>
+          <a href="https://wa.me/27783657892?text=Hello%20MBIRE%20TV%20ZIMBABWE%2C%20I%20would%20like%20to%20get%20in%20touch." target="_blank" style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:#25d366;color:#fff;padding:9px 18px;border-radius:8px;font-family:var(--font-title);font-size:0.78rem;font-weight:700;letter-spacing:1px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#1da851'" onmouseout="this.style.background='#25d366'">
+            <i class="fab fa-whatsapp" style="font-size:1rem;"></i> Chat on WhatsApp
+          </a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; <span id="year"></span> MBIRE TV ZIMBABWE. All Rights Reserved.</p>
+        <p>The Most Independent Zimbabwean Channel</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Set Year
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Mobile nav toggle
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('mobileNav').classList.toggle('open');
+    });
+
+    // Scroll effect
+    window.addEventListener('scroll', () => {
+      document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40);
+    });
+
+    // Login state indicator
+    const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
+    const userBadge = document.getElementById('commentUserBadge');
+    if (user) {
+      const text = user.role === 'superadmin' ? 'Dashboard' : 'Profile';
+      const url = user.role === 'superadmin' ? 'admin/index.html' : 'profile.html';
+      document.getElementById('navLoginBtn').textContent = text;
+      document.getElementById('navLoginBtn').href = url;
+      document.getElementById('mobLoginBtn').textContent = text;
+      document.getElementById('mobLoginBtn').href = url;
+      if (userBadge) {
+        userBadge.textContent = `Commenting as ${user.name} (${user.role === 'superadmin' ? 'Admin' : 'Member'})`;
+      }
+    }
+
+    // Lightbox triggers
+    function openLightbox(src) {
+      const lb = document.getElementById('imageLightbox');
+      const lbImg = document.getElementById('lightboxImage');
+      if (lb && lbImg) {
+        lbImg.src = src;
+        lb.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    function closeLightbox() {
+      const lb = document.getElementById('imageLightbox');
+      if (lb) {
+        lb.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+    }
+
+    // Helper date formatting
+    function timeAgo(dateStr) {
+      const now = new Date();
+      const date = new Date(dateStr);
+      const diff = Math.floor((now - date) / 1000);
+      if (diff < 60) return 'Just now';
+      if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + ' hours ago';
+      return date.toLocaleDateString();
+    }
+
+    // Page state variables
+    let currentArticleId = '';
+    let currentArticleTitle = '';
+    let commentsList = [];
+
+    // Load Article & Comments
+    async function loadArticleData() {
+      const urlParams = new URLSearchParams(window.location.search);
+      currentArticleId = urlParams.get('id');
+      if (!currentArticleId) {
+        document.getElementById('articleWrapper').innerHTML = `
+          <div style="text-align:center;padding:48px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:var(--radius-lg);">
+            <p class="text-muted">Article ID parameter missing. Go back to browse news articles.</p>
+            <a href="news.html" class="btn btn-primary btn-sm" style="margin-top:16px;">Go to Articles</a>
+          </div>
+        `;
+        return;
+      }
+
+      // Fetch article detail
+      const art = await fsGetArticleById(currentArticleId);
+      if (!art) {
+        document.getElementById('articleDetail').innerHTML = `
+          <p class="text-muted" style="text-align:center;padding:40px;">Article not found or deleted.</p>
+        `;
+        return;
+      }
+
+      currentArticleTitle = art.title;
+      document.getElementById('articleTitle').textContent = art.title;
+      document.getElementById('articleCat').textContent = art.cat.toUpperCase();
+      document.getElementById('articleCat').className = `card-category`;
+      document.getElementById('articleCat').style.position = 'static';
+      document.getElementById('articleCat').style.display = 'inline-block';
+      document.getElementById('articleCat').style.marginBottom = '12px';
+      document.getElementById('articleCat').style.background = 'var(--green)';
+      
+      document.getElementById('articleDate').innerHTML = `<i class="far fa-clock"></i> ${timeAgo(art.date)}`;
+      document.getElementById('articleAuthor').textContent = art.author || 'MBIRE TV';
+      
+      const imgEl = document.getElementById('articleImage');
+      if (imgEl && art.image) {
+        imgEl.src = art.image;
+        document.getElementById('articleImageWrapper').onclick = () => openLightbox(art.image);
+      } else {
+        document.getElementById('articleImageWrapper').style.display = 'none';
+      }
+
+      const contentEl = document.getElementById('articleContent');
+      contentEl.innerHTML = `<p>${art.body.replace(/\n/g, '</p><p>')}</p>`;
+
+      // Load marquee ticker titles
+      const allNews = await fsGetArticles(5);
+      const tickerTrack = document.getElementById('tickerTrack');
+      allNews.forEach(item => {
+        const span = document.createElement('span');
+        span.className = 'ticker-item';
+        span.innerHTML = `${item.title} <span class="ticker-separator">●</span>`;
+        tickerTrack.appendChild(span);
+      });
+
+      // Load comments
+      await reloadComments();
+    }
+
+    async function reloadComments() {
+      commentsList = await fsGetCommentsByArticle(currentArticleId);
+      const grid = document.getElementById('commentsListGrid');
+      const countEl = document.getElementById('commentCount');
+      if (!grid || !countEl) return;
+
+      countEl.textContent = commentsList.length;
+      grid.innerHTML = '';
+
+      if (commentsList.length === 0) {
+        grid.innerHTML = `<p class="text-muted" style="text-align:center;padding:24px 0;">No comments on this article yet. Be the first to comment!</p>`;
+        return;
+      }
+
+      commentsList.forEach(cmt => {
+        const initials = cmt.avatar || (cmt.authorName || 'G').substring(0, 2).toUpperCase();
+        const item = document.createElement('div');
+        item.className = 'comment-item';
+        item.innerHTML = `
+          <div class="comment-avatar">${initials}</div>
+          <div class="comment-body">
+            <div class="comment-meta">
+              <span class="comment-user">${cmt.authorName}</span>
+              <span class="comment-date">${timeAgo(cmt.date)}</span>
+            </div>
+            <p class="comment-text">${cmt.text}</p>
+          </div>
+        `;
+        grid.appendChild(item);
+      });
+    }
+
+    // Comment Post
+    async function postNewComment() {
+      const input = document.getElementById('commentInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      let authorName = 'Guest User';
+      let authorEmail = 'anonymous@guest.com';
+      let avatar = 'GU';
+
+      if (user) {
+        authorName = user.name || 'Member';
+        authorEmail = user.email || 'member@user.com';
+        avatar = authorName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+      }
+
+      const commentObj = {
+        id: 'cmt_' + Date.now(),
+        articleId: currentArticleId,
+        articleTitle: currentArticleTitle,
+        authorName,
+        authorEmail,
+        avatar,
+        text,
+        date: new Date().toISOString(),
+        status: 'approved'
+      };
+
+      try {
+        await fsSaveComment(commentObj);
+        input.value = '';
+        showToast('Comment posted successfully!', '✅');
+        await reloadComments();
+      } catch (e) {
+        console.error(e);
+        showToast('Failed to post comment: ' + e.message, '❌');
+      }
+    }
+
+    function showToast(msg, icon = '✅') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<span>${icon}</span><span class="toast-msg">${msg}</span>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+
+    // Initialize Page
+    loadArticleData();
+  </script>
+</body>
+</html>

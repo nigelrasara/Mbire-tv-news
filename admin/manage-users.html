@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Users — MBIRE TV Admin</title>
+  <link rel="icon" type="image/png" href="../images/logo.png">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="../js/firebase.js"></script>
+</head>
+<body class="light-mode">
+
+  <div class="admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="sidebar-logo">
+        <img src="../images/logo.png" alt="MBIRE TV" onerror="this.style.display='none'">
+        <div>
+          <div class="sidebar-logo-text">MBIRE TV</div>
+          <div class="sidebar-logo-sub">Zimbabwe Admin</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-label">Dashboard</div>
+        <a href="index.html" class="sidebar-link"><span class="icon"><i class="fas fa-home"></i></span> Overview</a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Content</div>
+        <a href="post-news.html" class="sidebar-link"><span class="icon"><i class="fas fa-pen-nib"></i></span> Post News</a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Management</div>
+        <a href="manage-users.html" class="sidebar-link active"><span class="icon"><i class="fas fa-users"></i></span> Manage Users</a>
+        <a href="manage-comments.html" class="sidebar-link"><span class="icon"><i class="fas fa-comments"></i></span> Manage Comments</a>
+        <a href="manage-submissions.html" class="sidebar-link"><span class="icon"><i class="fas fa-paper-plane"></i></span> User Submissions</a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Site</div>
+        <a href="../index.html" class="sidebar-link"><span class="icon"><i class="fas fa-globe"></i></span> View Website</a>
+        <a href="#" class="sidebar-link" onclick="handleAdminLogout()"><span class="icon"><i class="fas fa-sign-out-alt"></i></span> Logout</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+
+      <div class="admin-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="mob-menu-btn" onclick="toggleMobileSidebar()"><i class="fas fa-bars"></i> Menu</button>
+          <div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:2px;letter-spacing:1px;text-transform:uppercase;">Moderation</p>
+            <h1 class="admin-title">Manage Users</h1>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+        <button class="filter-btn active" data-filter="all" onclick="filterUsers('all', this)">All</button>
+        <button class="filter-btn" data-filter="pending" onclick="filterUsers('pending', this)">Pending</button>
+        <button class="filter-btn" data-filter="active" onclick="filterUsers('active', this)">Active</button>
+        <button class="filter-btn" data-filter="banned" onclick="filterUsers('banned', this)">Banned</button>
+      </div>
+
+      <div class="admin-card">
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="usersTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted);">
+                <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;color:var(--red);display:block;margin-bottom:8px;"></i>
+                Loading registered users...
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Edit Status Modal -->
+  <div class="modal" id="statusModal">
+    <div class="modal-card" style="max-width:400px;">
+      <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+      <h3 style="font-family:var(--font-title);font-size:1.1rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:20px;">Change User Status</h3>
+      <input type="hidden" id="modalUserId">
+      <div class="form-group">
+        <label class="form-label">New Status</label>
+        <select class="form-select" id="modalNewStatus">
+          <option value="active">Active (Approved)</option>
+          <option value="pending">Pending (Under Review)</option>
+          <option value="banned">Banned (Blocked)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="saveUserStatus()" style="width:100%;justify-content:center;margin-top:12px;">
+        <i class="fas fa-save"></i> Save Status
+      </button>
+    </div>
+  </div>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // Guard
+    const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
+    if (!user || user.role !== 'superadmin') location.href = '../login.html';
+
+    // Explicitly light mode
+    document.body.classList.add('light-mode');
+
+    // Mobile sidebar toggle
+    function toggleMobileSidebar() {
+      document.getElementById('adminSidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    let allUsers = [];
+
+    const STATUS_COLORS = {
+      active: '#22c55e',
+      pending: '#f59e0b',
+      banned: '#ef4444'
+    };
+
+    async function loadUsers() {
+      allUsers = await fsGetUsers();
+      renderTable(allUsers);
+    }
+
+    function renderTable(users) {
+      const tbody = document.getElementById('usersTableBody');
+      tbody.innerHTML = '';
+      if (users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">No users found.</td></tr>`;
+        return;
+      }
+      users.forEach(u => {
+        const dateStr = u.date ? new Date(u.date).toLocaleDateString() : '—';
+        const color = STATUS_COLORS[u.status] || '#888';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="font-weight:600;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-title);font-size:0.8rem;font-weight:700;flex-shrink:0;">
+                ${(u.name||'?').charAt(0).toUpperCase()}
+              </div>
+              ${u.name || '—'}
+            </div>
+          </td>
+          <td style="font-size:0.85rem;">${u.email || '—'}</td>
+          <td style="font-size:0.85rem;">${u.phone || '—'}</td>
+          <td>
+            <span style="padding:3px 10px;border-radius:12px;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:${color}22;color:${color};">
+              ${u.status || 'pending'}
+            </span>
+          </td>
+          <td style="font-size:0.8rem;color:var(--text-muted);">${dateStr}</td>
+          <td>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost btn-sm" title="Change Status" onclick="openStatusModal('${u.id}','${u.status||'pending'}')">
+                <i class="fas fa-user-edit"></i>
+              </button>
+              <button class="btn btn-ghost btn-sm" title="Delete User" style="color:var(--red);" onclick="deleteUser('${u.id}')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterUsers(status, btn) {
+      document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const filtered = status === 'all' ? allUsers : allUsers.filter(u => u.status === status);
+      renderTable(filtered);
+    }
+
+    function openStatusModal(userId, currentStatus) {
+      document.getElementById('modalUserId').value = userId;
+      document.getElementById('modalNewStatus').value = currentStatus;
+      document.getElementById('statusModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('statusModal').classList.remove('open');
+    }
+
+    async function saveUserStatus() {
+      const id = document.getElementById('modalUserId').value;
+      const newStatus = document.getElementById('modalNewStatus').value;
+      try {
+        await fsUpdateUserStatus(id, newStatus);
+        allUsers = allUsers.map(u => u.id === id ? {...u, status: newStatus} : u);
+        renderTable(allUsers);
+        closeModal();
+        showToast('User status updated.', '✅');
+      } catch (err) {
+        console.error(err);
+        showToast('Error updating status.', '❌');
+      }
+    }
+
+    async function deleteUser(id) {
+      if (!confirm('Permanently delete this user account?')) return;
+      try {
+        await fsDeleteUser(id);
+        allUsers = allUsers.filter(u => u.id !== id);
+        renderTable(allUsers);
+        showToast('User deleted.', '🗑️');
+      } catch (err) {
+        console.error(err);
+        showToast('Error deleting user.', '❌');
+      }
+    }
+
+    function handleAdminLogout() {
+      localStorage.removeItem('mbire_user');
+      location.href = '../login.html';
+    }
+
+    function showToast(msg, icon = '✅') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<span>${icon}</span><span class="toast-msg">${msg}</span>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+
+    loadUsers();
+  </script>
+</body>
+</html>

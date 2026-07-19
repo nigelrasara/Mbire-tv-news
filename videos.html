@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Coverage Videos — MBIRE TV ZIMBABWE</title>
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/youtube.js"></script>
+</head>
+<body class="light-mode">
+
+  <!-- Top Moving Ticker -->
+  <div class="breaking-ticker">
+    <div class="ticker-label"><span>⚡ BREAKING</span></div>
+    <div class="ticker-content">
+      <div class="ticker-track" id="tickerTrack">
+        <span class="ticker-item">MBIRE TV ZIMBABWE &mdash; The most independent Zimbabwean news channel. Subscribe to our YouTube channel! <span class="ticker-separator">●</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="nav-logo">
+      <img src="images/logo.png" alt="MBIRE TV Logo" onerror="this.style.display='none'">
+      <div class="nav-logo-text">
+        <span class="brand">MBIRE TV</span>
+        <span class="tagline">ZIMBABWE'S VOICE</span>
+      </div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="news.html">News Articles</a></li>
+      <li><a href="videos.html" class="active">Videos</a></li>
+      <li><a href="live.html" class="live-link"><span class="live-dot"></span>Live Broadcast</a></li>
+      <li><a href="submit-news.html">Submit News</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="login.html" class="btn-login" id="navLoginBtn">Login</a>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <div class="mobile-nav" id="mobileNav">
+    <a href="index.html">Home</a>
+    <a href="news.html">News Articles</a>
+    <a href="videos.html" class="active">Videos</a>
+    <a href="live.html">Live Broadcast</a>
+    <a href="submit-news.html">Submit News</a>
+    <a href="login.html" id="mobLoginBtn">Login</a>
+  </div>
+
+  <main class="page-wrapper">
+    <div class="container">
+      
+      <div class="section-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <i class="fab fa-youtube" style="font-size:2rem;color:var(--red);"></i>
+          <h1 class="section-title" style="margin:0;">YouTube Broadcasts & Coverage</h1>
+        </div>
+        <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="view-all" style="color:var(--red);">
+          <i class="fab fa-youtube"></i> Subscribe on YouTube
+        </a>
+      </div>
+
+      <!-- Real-time Videos List Loader -->
+      <div id="videosLoader" style="display:flex;justify-content:center;padding:64px 0;">
+        <i class="fas fa-spinner fa-spin" style="font-size:2.5rem;color:var(--red);"></i>
+      </div>
+
+      <!-- Video Feed List Rows -->
+      <div id="youtubeGrid" style="padding-bottom:20px;">
+        <!-- Rendered dynamically as vertical list row items starting with newest -->
+      </div>
+
+      <!-- Load More Button -->
+      <div style="display:flex; justify-content:center; padding-bottom:60px;">
+        <button class="btn btn-ghost" id="loadMoreBtn" onclick="loadMoreYouTubeVideos()" style="display:none; width:100%; max-width:320px; align-items:center; justify-content:center; gap:8px;">
+          <i class="fas fa-spinner fa-spin" id="loadMoreSpinner" style="display:none;"></i>
+          Load More Videos
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Video Modal -->
+  <div class="modal" id="videoModal">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeVideoModal()"><i class="fas fa-times"></i></button>
+      <div style="aspect-ratio:16/9; width:100%; background:#000;">
+        <iframe id="modalIframe" width="100%" height="100%" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Section -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="images/logo.png" alt="MBIRE TV Logo" onerror="this.style.display='none'">
+          <p class="footer-tagline">ZIMBABWE'S VOICE</p>
+          <p class="footer-desc">Mbire TV Zimbabwe is a dynamic independent media channel dedicated to delivering credible news reports, YouTube video coverage, and interactive community news submissions.</p>
+          <div class="social-links">
+            <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="social-link" title="YouTube"><i class="fab fa-youtube"></i></a>
+            <a href="https://wa.me/27783657892" target="_blank" class="social-link" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+            <a href="mailto:mbiretvnews@gmail.com" class="social-link" title="Email"><i class="fas fa-envelope"></i></a>
+          </div>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Contact Information</h4>
+          <div class="footer-contacts">
+            <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="footer-contact-item footer-contact-link">
+              <span class="icon"><i class="fab fa-youtube"></i></span>
+              <span>youtube.com/@MBIRETVNews</span>
+            </a>
+            <a href="https://wa.me/27783657892" target="_blank" class="footer-contact-item footer-contact-link">
+              <span class="icon" style="color:#25d366;"><i class="fab fa-whatsapp"></i></span>
+              <span>+27 78 365 7892</span>
+            </a>
+            <a href="mailto:mbiretvnews@gmail.com" class="footer-contact-item footer-contact-link">
+              <span class="icon"><i class="fas fa-envelope"></i></span>
+              <span>mbiretvnews@gmail.com</span>
+            </a>
+          </div>
+          <a href="https://wa.me/27783657892?text=Hello%20MBIRE%20TV%20ZIMBABWE%2C%20I%20would%20like%20to%20get%20in%20touch." target="_blank" style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:#25d366;color:#fff;padding:9px 18px;border-radius:8px;font-family:var(--font-title);font-size:0.78rem;font-weight:700;letter-spacing:1px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#1da851'" onmouseout="this.style.background='#25d366'">
+            <i class="fab fa-whatsapp" style="font-size:1rem;"></i> Chat on WhatsApp
+          </a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; <span id="year"></span> MBIRE TV ZIMBABWE. All Rights Reserved.</p>
+        <p>The Most Independent Zimbabwean Channel</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Set Year
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Mobile nav toggle
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('mobileNav').classList.toggle('open');
+    });
+
+    // Scroll effect
+    window.addEventListener('scroll', () => {
+      document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40);
+    });
+
+    // Login state indicator
+    const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
+    if (user) {
+      const text = user.role === 'superadmin' ? 'Dashboard' : 'Profile';
+      const url = user.role === 'superadmin' ? 'admin/index.html' : 'profile.html';
+      document.getElementById('navLoginBtn').textContent = text;
+      document.getElementById('navLoginBtn').href = url;
+      document.getElementById('mobLoginBtn').textContent = text;
+      document.getElementById('mobLoginBtn').href = url;
+    }
+
+    // Initialize Page
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Seed ticker
+      const articles = await fsGetArticles(5);
+      const tickerTrack = document.getElementById('tickerTrack');
+      articles.forEach(art => {
+        const span = document.createElement('span');
+        span.className = 'ticker-item';
+        span.innerHTML = `${art.title} <span class="ticker-separator">●</span>`;
+        tickerTrack.appendChild(span);
+      });
+
+      // Load YouTube videos in vertical list format
+      fetchYouTubeVideos('youtubeGrid', 10);
+    });
+
+    // Load More Function
+    function loadMoreYouTubeVideos() {
+      fetchYouTubeVideos('youtubeGrid', 10, true);
+    }
+  </script>
+</body>
+</html>

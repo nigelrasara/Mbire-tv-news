@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit News — MBIRE TV ZIMBABWE</title>
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script src="js/firebase.js"></script>
+</head>
+<body class="light-mode">
+
+  <!-- Top Moving Ticker -->
+  <div class="breaking-ticker">
+    <div class="ticker-label"><span>⚡ BREAKING</span></div>
+    <div class="ticker-content">
+      <div class="ticker-track" id="tickerTrack">
+        <span class="ticker-item">MBIRE TV ZIMBABWE &mdash; The most independent Zimbabwean news channel. Subscribe to our YouTube channel! <span class="ticker-separator">●</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="nav-logo">
+      <img src="images/logo.png" alt="MBIRE TV Logo" onerror="this.style.display='none'">
+      <div class="nav-logo-text">
+        <span class="brand">MBIRE TV</span>
+        <span class="tagline">ZIMBABWE'S VOICE</span>
+      </div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="news.html">News Articles</a></li>
+      <li><a href="videos.html">Videos</a></li>
+      <li><a href="live.html" class="live-link"><span class="live-dot"></span>Live Broadcast</a></li>
+      <li><a href="submit-news.html" class="active">Submit News</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="login.html" class="btn-login" id="navLoginBtn">Login</a>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <div class="mobile-nav" id="mobileNav">
+    <a href="index.html">Home</a>
+    <a href="news.html">News Articles</a>
+    <a href="videos.html">Videos</a>
+    <a href="live.html">Live Broadcast</a>
+    <a href="submit-news.html" class="active">Submit News</a>
+    <a href="login.html" id="mobLoginBtn">Login</a>
+  </div>
+
+  <main class="page-wrapper">
+    <div class="submit-news-container">
+      
+      <div class="submit-card">
+        <div class="submit-header">
+          <img src="images/logo.png" alt="MBIRE TV Logo" class="submit-logo" onerror="this.style.display='none'">
+          <h1 style="font-family:var(--font-title); font-size:1.8rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Submit A Story</h1>
+          <p style="font-size:0.875rem; color:var(--text-muted);">Have a hot news tip or community report? Send it directly to the MBIRE TV Editorial Desk.</p>
+        </div>
+
+        <form id="submitNewsForm" onsubmit="handleUserSubmission(event)">
+          
+          <div class="form-group">
+            <label class="form-label" for="subName">Your Name</label>
+            <input type="text" class="form-input" id="subName" placeholder="e.g. John Moyo" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="subEmail">Your Email Address</label>
+            <input type="email" class="form-input" id="subEmail" placeholder="e.g. john@example.com" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="subTitle">Subject / Headline</label>
+            <input type="text" class="form-input" id="subTitle" placeholder="Brief headline of what happened" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Attach Photo (Optional)</label>
+            <div class="upload-zone" id="uploadZone">
+              <i class="fas fa-cloud-upload-alt upload-zone-icon"></i>
+              <p>Drag & drop photo here or <strong>browse files</strong></p>
+              <input type="file" id="subImageFile" accept="image/*">
+            </div>
+            <div class="upload-progress" id="uploadProgress">
+              <div class="upload-progress-bar" id="uploadProgressBar"></div>
+            </div>
+            <input type="hidden" id="subImageUrl">
+            <img src="" class="upload-preview" id="imgPreview" alt="Upload Preview">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="subContent">Story Details</label>
+            <textarea class="form-textarea" id="subContent" placeholder="Describe what happened. Include location, dates and as much detail as possible..." style="min-height:160px;" required></textarea>
+          </div>
+
+          <button class="btn btn-primary" type="submit" style="width:100%; justify-content:center;">
+            <i class="fas fa-paper-plane"></i> Submit News Tip
+          </button>
+
+        </form>
+      </div>
+
+    </div>
+  </main>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Footer Section -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="images/logo.png" alt="MBIRE TV Logo" onerror="this.style.display='none'">
+          <p class="footer-tagline">ZIMBABWE'S VOICE</p>
+          <p class="footer-desc">Mbire TV Zimbabwe is a dynamic independent media channel dedicated to delivering credible news reports, YouTube video coverage, and interactive community news submissions.</p>
+          <div class="social-links">
+            <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="social-link" title="YouTube"><i class="fab fa-youtube"></i></a>
+            <a href="https://wa.me/27783657892" target="_blank" class="social-link" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+            <a href="mailto:mbiretvnews@gmail.com" class="social-link" title="Email"><i class="fas fa-envelope"></i></a>
+          </div>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Contact Information</h4>
+          <div class="footer-contacts">
+            <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="footer-contact-item footer-contact-link">
+              <span class="icon"><i class="fab fa-youtube"></i></span>
+              <span>youtube.com/@MBIRETVNews</span>
+            </a>
+            <a href="https://wa.me/27783657892" target="_blank" class="footer-contact-item footer-contact-link">
+              <span class="icon" style="color:#25d366;"><i class="fab fa-whatsapp"></i></span>
+              <span>+27 78 365 7892</span>
+            </a>
+            <a href="mailto:mbiretvnews@gmail.com" class="footer-contact-item footer-contact-link">
+              <span class="icon"><i class="fas fa-envelope"></i></span>
+              <span>mbiretvnews@gmail.com</span>
+            </a>
+          </div>
+          <a href="https://wa.me/27783657892?text=Hello%20MBIRE%20TV%20ZIMBABWE%2C%20I%20would%20like%20to%20get%20in%20touch." target="_blank" style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:#25d366;color:#fff;padding:9px 18px;border-radius:8px;font-family:var(--font-title);font-size:0.78rem;font-weight:700;letter-spacing:1px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#1da851'" onmouseout="this.style.background='#25d366'">
+            <i class="fab fa-whatsapp" style="font-size:1rem;"></i> Chat on WhatsApp
+          </a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; <span id="year"></span> MBIRE TV ZIMBABWE. All Rights Reserved.</p>
+        <p>The Most Independent Zimbabwean Channel</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Set Year
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Mobile nav toggle
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('mobileNav').classList.toggle('open');
+    });
+
+    // Scroll effect
+    window.addEventListener('scroll', () => {
+      document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40);
+    });
+
+    // Login state indicator
+    const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
+    if (user) {
+      const text = user.role === 'superadmin' ? 'Dashboard' : 'Profile';
+      const url = user.role === 'superadmin' ? 'admin/index.html' : 'profile.html';
+      document.getElementById('navLoginBtn').textContent = text;
+      document.getElementById('navLoginBtn').href = url;
+      document.getElementById('mobLoginBtn').textContent = text;
+      document.getElementById('mobLoginBtn').href = url;
+    }
+
+    // Drag-and-drop upload zone logic
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('subImageFile');
+    const progressBar = document.getElementById('uploadProgressBar');
+    const progressDiv = document.getElementById('uploadProgress');
+    const previewImg = document.getElementById('imgPreview');
+    const urlHidden = document.getElementById('subImageUrl');
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('drag-over');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('drag-over');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files.length) handleImageUpload(files[0]);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const files = e.target.files;
+      if (files.length) handleImageUpload(files[0]);
+    });
+
+    async function handleImageUpload(file) {
+      if (!file.type.startsWith('image/')) {
+        showToast('Please upload an image file.', '⚠️');
+        return;
+      }
+
+      progressDiv.style.display = 'block';
+      progressBar.style.width = '30%';
+
+      try {
+        progressBar.style.width = '70%';
+        const downloadUrl = await fsUploadImage(file);
+        
+        progressBar.style.width = '100%';
+        urlHidden.value = downloadUrl;
+        
+        previewImg.src = downloadUrl;
+        previewImg.style.display = 'block';
+        
+        showToast('Image uploaded successfully!', '📸');
+        setTimeout(() => { progressDiv.style.display = 'none'; }, 800);
+      } catch (err) {
+        console.error(err);
+        showToast(err.message || 'Image upload failed. Try a smaller file.', '❌');
+        progressDiv.style.display = 'none';
+      }
+    }
+
+    // Form Submission
+    async function handleUserSubmission(e) {
+      e.preventDefault();
+      
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...'; }
+
+      const name = document.getElementById('subName').value.trim();
+      const email = document.getElementById('subEmail').value.trim();
+      const title = document.getElementById('subTitle').value.trim();
+      const image = document.getElementById('subImageUrl').value.trim();
+      const content = document.getElementById('subContent').value.trim();
+
+      const subObj = {
+        id: 'sub_' + Date.now(),
+        name,
+        email,
+        title,
+        image: image || '',
+        content,
+        date: new Date().toISOString()
+      };
+
+      try {
+        await fsSaveSubmission(subObj);
+        showToast('Story submitted successfully! Thank you for supporting Mbire TV.', '✅');
+        
+        // Reset Form
+        document.getElementById('submitNewsForm').reset();
+        previewImg.style.display = 'none';
+        previewImg.src = '';
+        urlHidden.value = '';
+        
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit News Tip'; }
+      } catch (err) {
+        console.error(err);
+        showToast('Error sending submission: ' + err.message, '❌');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit News Tip'; }
+      }
+    }
+
+    function showToast(msg, icon = '✅') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<span>${icon}</span><span class="toast-msg">${msg}</span>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 4000);
+    }
+
+    // Initialize Page (load marquee headlines)
+    document.addEventListener('DOMContentLoaded', async () => {
+      const articles = await fsGetArticles(5);
+      const tickerTrack = document.getElementById('tickerTrack');
+      articles.forEach(art => {
+        const span = document.createElement('span');
+        span.className = 'ticker-item';
+        span.innerHTML = `${art.title} <span class="ticker-separator">●</span>`;
+        tickerTrack.appendChild(span);
+      });
+    });
+  </script>
+</body>
+</html>

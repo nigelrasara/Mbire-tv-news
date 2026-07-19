@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — MBIRE TV ZIMBABWE</title>
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase.js"></script>
+</head>
+<body class="light-mode" style="display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--bg); padding:20px;">
+
+  <div class="submit-card" style="max-width:420px; width:100%;">
+    <div class="submit-header">
+      <a href="index.html" style="display:inline-block;">
+        <img src="images/logo.png" alt="MBIRE TV Logo" class="submit-logo" onerror="this.style.display='none'">
+        <h2 style="font-family:var(--font-title); font-size:1.4rem; font-weight:700; color:var(--text); letter-spacing:1px; margin-top:8px; text-transform:uppercase;">
+          MBIRE TV <span style="color:var(--green);">ZIMBABWE</span>
+        </h2>
+      </a>
+      <p style="font-size:0.875rem; color:var(--text-muted); margin-top:6px;">Login to access account features</p>
+    </div>
+
+    <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+      <div class="form-group">
+        <label class="form-label" for="loginEmail">Email / Username</label>
+        <input class="form-input" type="text" id="loginEmail" placeholder="e.g. Mbire or email" required>
+      </div>
+
+      <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label" for="loginPassword">Password</label>
+        <input class="form-input" type="password" id="loginPassword" placeholder="••••••••" required>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; font-size:0.825rem;">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:var(--text-dim);">
+          <input type="checkbox" id="rememberMe" style="accent-color:var(--red);"> Remember me
+        </label>
+        <a href="#" onclick="showForgotPassword()" style="color:var(--red); font-weight:500;">Forgot Password?</a>
+      </div>
+
+      <button class="btn btn-primary" type="submit" style="width:100%; justify-content:center; margin-bottom:16px;">
+        <i class="fas fa-sign-in-alt"></i> Login
+      </button>
+
+      <div class="auth-divider" style="text-align:center; position:relative; margin:20px 0; font-size:0.78rem; color:var(--text-muted);">
+        <span style="background:var(--bg-card); padding:0 12px; z-index:2; position:relative;">or continue with</span>
+        <div style="height:1px; background:var(--border); position:absolute; top:50%; left:0; right:0; z-index:1;"></div>
+      </div>
+
+      <button class="btn-google" type="button" onclick="handleGoogleSignIn()">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google/logo_18dp.png" alt="Google Logo" style="width:18px; height:18px;">
+        <span>Continue with Google</span>
+      </button>
+    </form>
+
+    <div class="auth-footer" style="text-align:center; margin-top:20px; font-size:0.85rem; color:var(--text-muted);">
+      <span>Don't have an account?</span>
+      <a href="signup.html" style="color:var(--red); font-weight:600; margin-left:4px;">Sign Up</a>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // Explicitly light mode
+    document.body.classList.add('light-mode');
+
+    // Admin Credentials
+    const ADMINS = [
+      { usernames: ['mbire', 'mbiretvnews@gmail.com'], password: 'mbiretv12', displayName: 'Mbire' }
+    ];
+
+    // Session generator
+    const ADMIN_SESSION = (name) => ({
+      role: 'superadmin',
+      name: name,
+      email: 'mbiretvnews@gmail.com',
+      access: {
+        dashboard: true,
+        postNews: true,
+        manageNews: true,
+        manageUsers: true,
+        comments: true,
+        submissions: true
+      }
+    });
+
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      const loginVal = document.getElementById('loginEmail').value.trim();
+      const passVal  = document.getElementById('loginPassword').value.trim();
+      const normalized = loginVal.toLowerCase();
+
+      // 1. Check admin credentials
+      const admin = ADMINS.find(a =>
+        a.usernames.includes(normalized) && a.password === passVal
+      );
+
+      if (admin) {
+        localStorage.setItem('mbire_user', JSON.stringify(ADMIN_SESSION(admin.displayName)));
+        showToast(`Welcome back, ${admin.displayName}! Redirecting to dashboard...`, '🔑');
+        setTimeout(() => location.href = 'admin/index.html', 1500);
+        return;
+      }
+
+      // 2. Check Firestore registered user list
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...'; }
+
+      try {
+        const usersList = await fsGetUsers();
+        const userFound = usersList.find(u =>
+          (u.email.toLowerCase() === normalized || u.phone === loginVal) && u.password === passVal
+        );
+
+        if (!userFound) {
+          showToast('Invalid credentials!', '❌');
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login'; }
+          return;
+        }
+
+        if (userFound.status === 'pending') {
+          showToast('Your account is pending approval by the admin.', '⏳');
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login'; }
+          return;
+        }
+
+        if (userFound.status === 'banned') {
+          showToast('Your account has been banned by the moderator.', '🚫');
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login'; }
+          return;
+        }
+
+        // Approved active user session
+        localStorage.setItem('mbire_user', JSON.stringify({
+          role: 'user',
+          name: userFound.name,
+          email: userFound.email,
+          phone: userFound.phone,
+          access: {}
+        }));
+        
+        showToast('Login successful! Redirecting...', '👋');
+        setTimeout(() => location.href = 'profile.html', 1500);
+
+      } catch (err) {
+        console.error(err);
+        showToast('Connection error. Try again.', '❌');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login'; }
+      }
+    }
+
+    async function handleGoogleSignIn() {
+      showToast('Connecting with Google accounts...', '🌐');
+      try {
+        const usersList = await fsGetUsers();
+        const userFound = usersList.find(u => u.email === 'googleuser@gmail.com');
+        if (userFound) {
+          if (userFound.status === 'pending') {
+            showToast('Google account is pending approval.', '⏳');
+            return;
+          }
+          if (userFound.status === 'banned') {
+            showToast('Google account is banned.', '🚫');
+            return;
+          }
+          localStorage.setItem('mbire_user', JSON.stringify({ role: 'user', name: userFound.name, email: userFound.email, access: {} }));
+          showToast('Logged in with Google!', '🌐');
+          setTimeout(() => location.href = 'profile.html', 1500);
+        } else {
+          showToast('Google account not registered yet. Please sign up.', '⚠️');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function showForgotPassword() {
+      showToast('Reset link has been dispatched to your email address.', '✉️');
+    }
+
+    function showToast(msg, icon = '✅') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<span>${icon}</span><span class="toast-msg">${msg}</span>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+  </script>
+</body>
+</html>

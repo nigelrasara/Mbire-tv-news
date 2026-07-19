@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up — MBIRE TV ZIMBABWE</title>
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase.js"></script>
+</head>
+<body class="light-mode" style="display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--bg); padding:20px 0;">
+
+  <div class="submit-card" style="max-width:480px; width:100%; margin:20px;">
+    <div class="submit-header">
+      <a href="index.html" style="display:inline-block;">
+        <img src="images/logo.png" alt="MBIRE TV Logo" class="submit-logo" onerror="this.style.display='none'">
+        <h2 style="font-family:var(--font-title); font-size:1.4rem; font-weight:700; color:var(--text); letter-spacing:1px; margin-top:8px; text-transform:uppercase;">
+          MBIRE TV <span style="color:var(--green);">ZIMBABWE</span>
+        </h2>
+      </a>
+      <p style="font-size:0.875rem; color:var(--text-muted); margin-top:6px;">Create an account to comment on articles</p>
+    </div>
+
+    <form id="signupForm" onsubmit="handleSignupSubmit(event)">
+      <div class="form-group">
+        <label class="form-label" for="signupName">Full Name</label>
+        <input class="form-input" type="text" id="signupName" placeholder="e.g. John Moyo" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="signupEmail">Email Address</label>
+        <input class="form-input" type="email" id="signupEmail" placeholder="e.g. john@example.com">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="signupPhone">Phone Number</label>
+        <input class="form-input" type="tel" id="signupPhone" placeholder="e.g. +27 78 365 7892">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="signupPassword">Password</label>
+        <input class="form-input" type="password" id="signupPassword" placeholder="Minimum 6 characters" required minlength="6">
+      </div>
+
+      <div class="form-group" style="margin-bottom:24px;">
+        <label class="form-label" for="signupConfirm">Confirm Password</label>
+        <input class="form-input" type="password" id="signupConfirm" placeholder="Re-enter password" required>
+      </div>
+
+      <button class="btn btn-primary" type="submit" style="width:100%; justify-content:center; margin-bottom:16px;">
+        <i class="fas fa-user-plus"></i> Create Account
+      </button>
+
+      <div class="auth-divider" style="text-align:center; position:relative; margin:20px 0; font-size:0.78rem; color:var(--text-muted);">
+        <span style="background:var(--bg-card); padding:0 12px; z-index:2; position:relative;">or register with</span>
+        <div style="height:1px; background:var(--border); position:absolute; top:50%; left:0; right:0; z-index:1;"></div>
+      </div>
+
+      <button class="btn-google" type="button" onclick="handleGoogleSignUp()">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google/logo_18dp.png" alt="Google Logo" style="width:18px; height:18px;">
+        <span>Sign Up with Google</span>
+      </button>
+    </form>
+
+    <div class="auth-footer" style="text-align:center; margin-top:20px; font-size:0.85rem; color:var(--text-muted);">
+      <span>Already have an account?</span>
+      <a href="login.html" style="color:var(--red); font-weight:600; margin-left:4px;">Login</a>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // Explicitly light mode
+    document.body.classList.add('light-mode');
+
+    async function handleSignupSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('signupName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const phone = document.getElementById('signupPhone').value.trim();
+      const pass = document.getElementById('signupPassword').value.trim();
+      const confirm = document.getElementById('signupConfirm').value.trim();
+
+      if (!email && !phone) {
+        showToast('Please enter either your email address or phone number.', '⚠️');
+        return;
+      }
+
+      if (pass !== confirm) {
+        showToast('Passwords do not match.', '❌');
+        return;
+      }
+
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...'; }
+
+      const newUser = {
+        id: 'usr_' + Date.now(),
+        name,
+        email: email || '',
+        phone: phone || '',
+        password: pass,
+        role: 'user',
+        status: 'pending',
+        date: new Date().toISOString()
+      };
+
+      try {
+        await fsSaveUser(newUser);
+        showToast('Registration successful! Account is pending admin approval.', '⏳');
+        setTimeout(() => location.href = 'login.html', 3000);
+      } catch (err) {
+        console.error(err);
+        showToast('Error registering account: ' + err.message, '❌');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account'; }
+      }
+    }
+
+    async function handleGoogleSignUp() {
+      showToast('Registering Google Account... Admin approval required.', '🌐');
+      const googleUser = {
+        id: 'usr_g_' + Date.now(),
+        name: 'Google User',
+        email: 'googleuser@gmail.com',
+        phone: '',
+        role: 'user',
+        status: 'pending',
+        date: new Date().toISOString()
+      };
+      
+      try {
+        await fsSaveUser(googleUser);
+        setTimeout(() => location.href = 'login.html', 3000);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function showToast(msg, icon = '✅') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<span>${icon}</span><span class="toast-msg">${msg}</span>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+  </script>
+</body>
+</html>

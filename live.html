@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Stream — MBIRE TV ZIMBABWE</title>
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/youtube.js"></script>
+  <style>
+    .live-wrapper {
+      max-width: 960px;
+      margin: 40px auto;
+      padding: 0 20px 80px;
+    }
+    .live-panel {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      margin-bottom: 32px;
+    }
+    .live-player-container {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #111;
+      position: relative;
+    }
+    .live-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1.5px solid var(--border);
+      flex-wrap: wrap;
+      gap: 12px;
+      background: #fff;
+    }
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1.5px solid var(--border);
+      background: var(--bg-card2);
+      padding: 5px 14px;
+      border-radius: 14px;
+      font-family: var(--font-title);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .live-badge.is-live {
+      background: #fff0f0;
+      border-color: var(--red);
+      animation: liveGlow 1.8s ease-in-out infinite;
+    }
+    .live-badge.is-upcoming {
+      background: #fffbea;
+      border-color: #e6a817;
+    }
+    @keyframes liveGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(220,0,0,0.15); }
+      50% { box-shadow: 0 0 0 6px rgba(220,0,0,0); }
+    }
+    /* Auto-refresh pulse indicator */
+    .refresh-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+    }
+    .refresh-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: refreshPulse 2s ease-in-out infinite;
+    }
+    @keyframes refreshPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    /* Recent Live Panel */
+    .recent-live-panel {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      margin-bottom: 32px;
+    }
+    /* recent-live-header & .recent-live-badge are defined in style.css (50/50 grid) */
+    .recent-live-player {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #000;
+    }
+    .recent-live-player iframe {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .recent-live-info {
+      padding: 16px 24px;
+      background: #fff;
+    }
+    .recent-live-meta {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    /* Offline notice style */
+    #liveOfflineNotice {
+      background: #fff;
+    }
+  </style>
+</head>
+<body class="light-mode">
+
+  <!-- Top Moving Ticker -->
+  <div class="breaking-ticker">
+    <div class="ticker-label"><span>⚡ BREAKING</span></div>
+    <div class="ticker-content">
+      <div class="ticker-track" id="tickerTrack">
+        <span class="ticker-item">MBIRE TV ZIMBABWE &mdash; The most independent Zimbabwean news channel. Subscribe to our YouTube channel! <span class="ticker-separator">●</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="nav-logo">
+      <img src="images/logo.png" alt="MBIRE TV Logo" onerror="this.style.display='none'">
+      <div class="nav-logo-text">
+        <span class="brand">MBIRE TV</span>
+        <span class="tagline">ZIMBABWE'S VOICE</span>
+      </div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="news.html">News Articles</a></li>
+      <li><a href="videos.html">Videos</a></li>
+      <li><a href="live.html" class="active live-link"><span class="live-dot"></span>Live Broadcast</a></li>
+      <li><a href="submit-news.html">Submit News</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="login.html" class="btn-login" id="navLoginBtn">Login</a>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <div class="mobile-nav" id="mobileNav">
+    <a href="index.html">Home</a>
+    <a href="news.html">News Articles</a>
+    <a href="videos.html">Videos</a>
+    <a href="live.html" class="active">Live Broadcast</a>
+    <a href="submit-news.html">Submit News</a>
+    <a href="login.html" id="mobLoginBtn">Login</a>
+  </div>
+
+  <main class="page-wrapper">
+    <div class="live-wrapper">
+      
+      <div class="section-header" style="margin-bottom:24px;">
+        <h1 class="section-title">Live Stream Portal</h1>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <div class="refresh-indicator">
+            <span class="refresh-dot"></span>
+            <span id="refreshCountdown">Checking every 60s</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="manualRefreshLive()"><i class="fas fa-sync-alt"></i> Refresh Now</button>
+        </div>
+      </div>
+
+      <!-- Live Stream Panel -->
+      <div class="live-panel">
+        <div class="live-bar">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div class="live-badge" id="liveIndicator">
+              <span class="live-dot" style="display:none;"></span>
+              <span>CHECKING...</span>
+            </div>
+            <h3 style="font-family:var(--font-title); font-size:1.05rem; margin:0; color:var(--text);" id="liveStatusText">Verifying live stream status...</h3>
+          </div>
+        </div>
+
+        <div class="live-player-container">
+          <!-- Active Iframe Stream -->
+          <iframe id="livePlayer" style="display:none; width:100%; height:100%;" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          
+          <!-- Offline / Upcoming Notice -->
+          <div id="liveOfflineNotice" style="display:flex; padding:48px 24px; position:absolute; top:0; left:0; right:0; bottom:0; align-items:center; justify-content:center;">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Most Recent Live Broadcast (Replay) -->
+      <div class="recent-live-panel" id="recentLivePanel" style="display:none;">
+        <div class="recent-live-header">
+          <span class="recent-live-badge"><i class="fas fa-history" style="margin-right:5px;"></i><span id="recentLiveBadgeLabel">Most Recent Live</span></span>
+          <h3 style="font-family:var(--font-title);font-size:1rem;margin:0;color:var(--text);" id="recentLiveTitle">Loading last broadcast...</h3>
+        </div>
+        <div class="recent-live-player">
+          <iframe id="recentLivePlayer" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+        <div class="recent-live-info">
+          <p class="recent-live-meta" id="recentLiveMeta"></p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+
+  <!-- Footer Section -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="images/logo.png" alt="MBIRE TV Logo" onerror="this.style.display='none'">
+          <p class="footer-tagline">ZIMBABWE'S VOICE</p>
+          <p class="footer-desc">Mbire TV Zimbabwe is a dynamic independent media channel dedicated to delivering credible news reports, YouTube video coverage, and interactive community news submissions.</p>
+          <div class="social-links">
+            <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="social-link" title="YouTube"><i class="fab fa-youtube"></i></a>
+            <a href="https://wa.me/27783657892" target="_blank" class="social-link" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+            <a href="mailto:mbiretvnews@gmail.com" class="social-link" title="Email"><i class="fas fa-envelope"></i></a>
+          </div>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Contact Information</h4>
+          <div class="footer-contacts">
+            <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="footer-contact-item footer-contact-link">
+              <span class="icon"><i class="fab fa-youtube"></i></span>
+              <span>youtube.com/@MBIRETVNews</span>
+            </a>
+            <a href="https://wa.me/27783657892" target="_blank" class="footer-contact-item footer-contact-link">
+              <span class="icon" style="color:#25d366;"><i class="fab fa-whatsapp"></i></span>
+              <span>+27 78 365 7892</span>
+            </a>
+            <a href="mailto:mbiretvnews@gmail.com" class="footer-contact-item footer-contact-link">
+              <span class="icon"><i class="fas fa-envelope"></i></span>
+              <span>mbiretvnews@gmail.com</span>
+            </a>
+          </div>
+          <a href="https://wa.me/27783657892?text=Hello%20MBIRE%20TV%20ZIMBABWE%2C%20I%20would%20like%20to%20get%20in%20touch." target="_blank" style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:#25d366;color:#fff;padding:9px 18px;border-radius:8px;font-family:var(--font-title);font-size:0.78rem;font-weight:700;letter-spacing:1px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#1da851'" onmouseout="this.style.background='#25d366'">
+            <i class="fab fa-whatsapp" style="font-size:1rem;"></i> Chat on WhatsApp
+          </a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; <span id="year"></span> MBIRE TV ZIMBABWE. All Rights Reserved.</p>
+        <p>The Most Independent Zimbabwean Channel</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Set Year
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Mobile nav toggle
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('mobileNav').classList.toggle('open');
+    });
+
+    // Scroll effect
+    window.addEventListener('scroll', () => {
+      document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40);
+    });
+
+    // Login state indicator
+    const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
+    if (user) {
+      const text = user.role === 'superadmin' ? 'Dashboard' : 'Profile';
+      const url = user.role === 'superadmin' ? 'admin/index.html' : 'profile.html';
+      document.getElementById('navLoginBtn').textContent = text;
+      document.getElementById('navLoginBtn').href = url;
+      document.getElementById('mobLoginBtn').textContent = text;
+      document.getElementById('mobLoginBtn').href = url;
+    }
+
+    // Initialize Page
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Seed ticker
+      const articles = await fsGetArticles(5);
+      const tickerTrack = document.getElementById('tickerTrack');
+      articles.forEach(art => {
+        const span = document.createElement('span');
+        span.className = 'ticker-item';
+        span.innerHTML = `${art.title} <span class="ticker-separator">●</span>`;
+        tickerTrack.appendChild(span);
+      });
+
+      // Run live status check + start 60-second auto-poll with countdown indicator
+      checkChannelLiveState();
+      startLivePolling();
+    });
+  </script>
+</body>
+</html>

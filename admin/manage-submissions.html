@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Submissions — MBIRE TV Admin</title>
+  <link rel="icon" type="image/png" href="../images/logo.png">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="../js/firebase.js"></script>
+</head>
+<body class="light-mode">
+
+  <div class="admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="sidebar-logo">
+        <img src="../images/logo.png" alt="MBIRE TV" onerror="this.style.display='none'">
+        <div>
+          <div class="sidebar-logo-text">MBIRE TV</div>
+          <div class="sidebar-logo-sub">Zimbabwe Admin</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-label">Dashboard</div>
+        <a href="index.html" class="sidebar-link"><span class="icon"><i class="fas fa-home"></i></span> Overview</a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Content</div>
+        <a href="post-news.html" class="sidebar-link"><span class="icon"><i class="fas fa-pen-nib"></i></span> Post News</a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Management</div>
+        <a href="manage-users.html" class="sidebar-link"><span class="icon"><i class="fas fa-users"></i></span> Manage Users</a>
+        <a href="manage-comments.html" class="sidebar-link"><span class="icon"><i class="fas fa-comments"></i></span> Manage Comments</a>
+        <a href="manage-submissions.html" class="sidebar-link active"><span class="icon"><i class="fas fa-paper-plane"></i></span> User Submissions</a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Site</div>
+        <a href="../index.html" class="sidebar-link"><span class="icon"><i class="fas fa-globe"></i></span> View Website</a>
+        <a href="#" class="sidebar-link" onclick="handleAdminLogout()"><span class="icon"><i class="fas fa-sign-out-alt"></i></span> Logout</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+
+      <div class="admin-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="mob-menu-btn" onclick="toggleMobileSidebar()"><i class="fas fa-bars"></i> Menu</button>
+          <div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:2px;letter-spacing:1px;text-transform:uppercase;">Editorial Inbox</p>
+            <h1 class="admin-title">User Story Submissions</h1>
+          </div>
+        </div>
+      </div>
+
+      <!-- Story Cards Grid -->
+      <div id="submissionsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:20px;padding-bottom:40px;">
+        <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">
+          <i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--red);display:block;margin-bottom:12px;"></i>
+          Loading community submissions...
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Read Full Submission Modal -->
+  <div class="modal" id="readModal">
+    <div class="modal-card" style="max-width:600px;">
+      <button class="modal-close" onclick="closeReadModal()"><i class="fas fa-times"></i></button>
+      <div id="readModalContent" style="padding: 24px;"></div>
+    </div>
+  </div>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // Guard
+    const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
+    if (!user || user.role !== 'superadmin') location.href = '../login.html';
+
+    // Explicitly light mode
+    document.body.classList.add('light-mode');
+
+    // Mobile sidebar toggle
+    function toggleMobileSidebar() {
+      document.getElementById('adminSidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    let submissions = [];
+
+    function timeAgo(dateStr) {
+      const now = new Date(), date = new Date(dateStr);
+      const diff = Math.floor((now - date) / 1000);
+      if (diff < 60) return 'Just now';
+      if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + ' hrs ago';
+      return date.toLocaleDateString();
+    }
+
+    async function loadSubmissions() {
+      submissions = await fsGetSubmissions();
+      renderGrid(submissions);
+    }
+
+    function renderGrid(list) {
+      const grid = document.getElementById('submissionsGrid');
+      grid.innerHTML = '';
+      if (!list.length) {
+        grid.innerHTML = `
+          <div style="grid-column:1/-1;text-align:center;padding:64px;color:var(--text-muted);">
+            <i class="fas fa-inbox" style="font-size:3rem;margin-bottom:16px;display:block;"></i>
+            <p style="font-family:var(--font-title);text-transform:uppercase;letter-spacing:1px;">No story submissions yet</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach(sub => {
+        const card = document.createElement('div');
+        card.className = 'admin-card';
+        card.style.cssText = 'padding:20px;margin:0;';
+        card.innerHTML = `
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;">
+            <div>
+              <h3 style="font-family:var(--font-title);font-size:1rem;font-weight:700;margin-bottom:4px;letter-spacing:0.5px;">${sub.title || 'Untitled Story'}</h3>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <span style="font-size:0.78rem;color:var(--text-muted);">
+                  <i class="fas fa-user" style="margin-right:4px;"></i>${sub.name || 'Anonymous'}
+                </span>
+                <span style="color:var(--border);">•</span>
+                <span style="font-size:0.78rem;color:var(--text-muted);">
+                  <i class="far fa-clock" style="margin-right:4px;"></i>${timeAgo(sub.date)}
+                </span>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm" style="color:var(--red);flex-shrink:0;" title="Delete Submission" onclick="deleteSubmission('${sub.id}')">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+
+          ${sub.image ? `<img src="${sub.image}" alt="Submission image" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--radius);margin-bottom:12px;">` : ''}
+
+          <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:16px;">${sub.content || ''}</p>
+
+          <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;border-top:1.5px solid var(--border);padding-top:14px;">
+            <span style="font-size:0.78rem;color:var(--text-muted);">
+              <i class="fas fa-envelope" style="margin-right:4px;"></i>${sub.email || '—'}
+            </span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="readSubmission('${sub.id}')">
+                <i class="fas fa-eye"></i> Read Full
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="useAsArticle('${sub.id}')">
+                <i class="fas fa-pen-nib"></i> Use as Article
+              </button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function readSubmission(id) {
+      const sub = submissions.find(s => s.id === id);
+      if (!sub) return;
+      document.getElementById('readModalContent').innerHTML = `
+        <h2 style="font-family:var(--font-title);font-size:1.3rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">${sub.title}</h2>
+        <div style="display:flex;gap:12px;margin-bottom:16px;font-size:0.82rem;color:var(--text-muted);">
+          <span><i class="fas fa-user"></i> ${sub.name}</span>
+          <span><i class="fas fa-envelope"></i> ${sub.email || '—'}</span>
+        </div>
+        ${sub.image ? `<img src="${sub.image}" alt="Image" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--radius);margin-bottom:16px;">` : ''}
+        <p style="font-size:0.9rem;line-height:1.8;color:var(--text-dim);">${(sub.content||'').replace(/\n/g,'<br>')}</p>
+      `;
+      document.getElementById('readModal').classList.add('open');
+    }
+
+    function closeReadModal() {
+      document.getElementById('readModal').classList.remove('open');
+    }
+
+    function useAsArticle(id) {
+      const sub = submissions.find(s => s.id === id);
+      if (!sub) return;
+      const url = `post-news.html?prefill=${encodeURIComponent(JSON.stringify({ title: sub.title, body: sub.content, image: sub.image }))}`;
+      location.href = url;
+    }
+
+    async function deleteSubmission(id) {
+      if (!confirm('Delete this story submission permanently?')) return;
+      try {
+        await fsDeleteSubmission(id);
+        submissions = submissions.filter(s => s.id !== id);
+        renderGrid(submissions);
+        showToast('Submission deleted.', '🗑️');
+      } catch (err) {
+        console.error(err);
+        showToast('Error deleting submission.', '❌');
+      }
+    }
+
+    function handleAdminLogout() {
+      localStorage.removeItem('mbire_user');
+      location.href = '../login.html';
+    }
+
+    function showToast(msg, icon = '✅') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<span>${icon}</span><span class="toast-msg">${msg}</span>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+
+    loadSubmissions();
+  </script>
+</body>
+</html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="MBIRE TV ZIMBABWE - Zimbabwe's premier online independent news channel. Watch live broadcasts, latest report videos and breaking updates.">
+  <title>MBIRE TV ZIMBABWE — Zimbabwe's Voice</title>
+  <link rel="icon" type="image/png" href="images/logo.png">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/youtube.js"></script>
+</head>
+<body class="light-mode">
+
+  <!-- Top Moving Ticker -->
+  <div class="breaking-ticker">
+    <div class="ticker-label"><span>⚡ BREAKING</span></div>
+    <div class="ticker-content">
+      <div class="ticker-track" id="tickerTrack">
+        <span class="ticker-item">MBIRE TV ZIMBABWE &mdash; The most independent Zimbabwean news channel. Subscribe to our YouTube channel! <span class="ticker-separator">●</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="nav-logo">
+      <img src="images/logo.png" alt="MBIRE TV Logo" onerror="this.style.display='none'">
+      <div class="nav-logo-text">
+        <span class="brand">MBIRE TV</span>
+        <span class="tagline">ZIMBABWE'S VOICE</span>
+      </div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">Home</a></li>
+      <li><a href="news.html">News Articles</a></li>
+      <li><a href="videos.html">Videos</a></li>
+      <li><a href="live.html" class="live-link"><span class="live-dot"></span>Live Broadcast</a></li>
+      <li><a href="submit-news.html">Submit News</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="login.html" class="btn-login" id="navLoginBtn">Login</a>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
+  <div class="mobile-nav" id="mobileNav">
+    <a href="index.html" class="active">Home</a>
+    <a href="news.html">News Articles</a>
+    <a href="videos.html">Videos</a>
+    <a href="live.html">Live Broadcast</a>
+    <a href="submit-news.html">Submit News</a>
+    <a href="login.html" id="mobLoginBtn">Login</a>
+  </div>
+
+  <main class="page-wrapper">
+
+    <!-- ═══ BRAND HERO BANNER ═══ -->
+    <section class="brand-hero-section">
+      <div class="container">
+        <div class="brand-hero-inner">
+          <div class="brand-hero-badge">
+            <span class="brand-hero-live-dot"></span>
+            <span>ZIMBABWE'S INDEPENDENT VOICE</span>
+          </div>
+          <h1 class="brand-hero-title">MBIRE TV<br><span class="brand-hero-zim">ZIMBABWE</span></h1>
+          <p class="brand-hero-tagline">Breaking News &bull; Live Coverage &bull; Community Voices</p>
+          <div class="brand-hero-divider"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live Now Banner (appears only when channel is broadcasting) -->
+    <section class="section" style="padding-top:15px;padding-bottom:0;">
+      <div class="container">
+        <div id="homeLiveBanner" style="display:none;"></div>
+      </div>
+    </section>
+
+    <!-- Breaking Video Section -->
+    <section class="section" style="padding-top:15px; padding-bottom:15px;">
+      <div class="container">
+        <div id="breakingVideoContainer">
+          <!-- Loaded dynamically (index 0 of YouTube videos feed) -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Featured Hero Article Section -->
+    <section class="section" style="padding-top:10px; padding-bottom:30px;">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">Featured Story</h2>
+        </div>
+        <div id="heroContainer">
+          <div style="text-align:center;padding:48px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:var(--radius-lg);">
+            <i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--red);margin-bottom:12px;"></i>
+            <p class="text-muted">Loading latest featured news story...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Latest Articles Row Grid -->
+    <section class="section" style="background:var(--bg-card2); padding:40px 0;">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">Written Articles</h2>
+          <a href="news.html" class="view-all">See All Articles <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(320px,100%), 1fr)); gap:24px;" id="articlesGrid">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- YouTube Videos Uploads Grid (Real-time Feed) -->
+    <section class="section" style="padding:40px 0;">
+      <div class="container">
+        <div class="section-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <i class="fab fa-youtube" style="font-size:2rem;color:var(--red);"></i>
+            <h2 class="section-title" style="margin:0;">Recent Broadcasts</h2>
+          </div>
+          <a href="videos.html" class="view-all">All Videos <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <div id="videosLoader" style="display:flex;justify-content:center;padding:32px;display:none;">
+          <i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--red);"></i>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(320px,100%), 1fr)); gap:24px;" id="indexVideosGrid">
+          <!-- Loaded directly from YouTube channel uploads -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Video Player Modal Overlay -->
+  <div class="modal" id="videoModal">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeVideoModal()"><i class="fas fa-times"></i></button>
+      <div style="aspect-ratio:16/9; width:100%; background:#000;">
+        <iframe id="modalIframe" width="100%" height="100%" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Section -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="images/logo.png" alt="MBIRE TV Logo" onerror="this.style.display='none'">
+          <p class="footer-tagline">ZIMBABWE'S VOICE</p>
+          <p class="footer-desc">Mbire TV Zimbabwe is a dynamic independent media channel dedicated to delivering credible news reports, YouTube video coverage, and interactive community news submissions.</p>
+          <div class="social-links">
+            <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="social-link" title="YouTube"><i class="fab fa-youtube"></i></a>
+            <a href="https://wa.me/27783657892" target="_blank" class="social-link" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+            <a href="mailto:mbiretvnews@gmail.com" class="social-link" title="Email"><i class="fas fa-envelope"></i></a>
+          </div>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Contact Information</h4>
+          <div class="footer-contacts">
+            <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="footer-contact-item footer-contact-link">
+              <span class="icon"><i class="fab fa-youtube"></i></span>
+              <span>youtube.com/@MBIRETVNews</span>
+            </a>
+            <a href="https://wa.me/27783657892" target="_blank" class="footer-contact-item footer-contact-link">
+              <span class="icon" style="color:#25d366;"><i class="fab fa-whatsapp"></i></span>
+              <span>+27 78 365 7892</span>
+            </a>
+            <a href="mailto:mbiretvnews@gmail.com" class="footer-contact-item footer-contact-link">
+              <span class="icon"><i class="fas fa-envelope"></i></span>
+              <span>mbiretvnews@gmail.com</span>
+            </a>
+          </div>
+          <!-- WhatsApp CTA Button -->
+          <a href="https://wa.me/27783657892?text=Hello%20MBIRE%20TV%20ZIMBABWE%2C%20I%20would%20like%20to%20get%20in%20touch." target="_blank" style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:#25d366;color:#fff;padding:9px 18px;border-radius:8px;font-family:var(--font-title);font-size:0.78rem;font-weight:700;letter-spacing:1px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#1da851'" onmouseout="this.style.background='#25d366'">
+            <i class="fab fa-whatsapp" style="font-size:1rem;"></i> Chat on WhatsApp
+          </a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; <span id="year"></span> MBIRE TV ZIMBABWE. All Rights Reserved.</p>
+        <p>The Most Independent Zimbabwean Channel</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Set Year
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Mobile nav toggle
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('mobileNav').classList.toggle('open');
+    });
+
+    // Scroll effect
+    window.addEventListener('scroll', () => {
+      document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40);
+    });
+
+    // Login state indicator
+    const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
+    if (user) {
+      const text = user.role === 'superadmin' ? 'Dashboard' : 'Profile';
+      const url = user.role === 'superadmin' ? 'admin/index.html' : 'profile.html';
+      document.getElementById('navLoginBtn').textContent = text;
+      document.getElementById('navLoginBtn').href = url;
+      document.getElementById('mobLoginBtn').textContent = text;
+      document.getElementById('mobLoginBtn').href = url;
+    }
+
+    // Helper date formatting
+    function timeAgo(dateStr) {
+      const now = new Date();
+      const date = new Date(dateStr);
+      const diff = Math.floor((now - date) / 1000);
+      if (diff < 60) return 'Just now';
+      if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + ' hours ago';
+      return date.toLocaleDateString();
+    }
+
+    // Load home page data
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. Fetch news articles from Firestore
+      const articles = await fsGetArticles(6);
+      
+      // Update breaking headlines ticker
+      const tickerTrack = document.getElementById('tickerTrack');
+      articles.forEach(art => {
+        const span = document.createElement('span');
+        span.className = 'ticker-item';
+        span.innerHTML = `${art.title} <span class="ticker-separator">●</span>`;
+        tickerTrack.appendChild(span);
+      });
+
+      // Populate hero (article index 0)
+      const heroContainer = document.getElementById('heroContainer');
+      if (articles.length > 0) {
+        const feat = articles[0];
+        const excerpt = feat.body.substring(0, 240) + '...';
+        heroContainer.innerHTML = `
+          <div class="card featured-story-card" style="border-color:var(--border);" id="featuredStoryCard">
+            <div class="card-img-wrap" style="aspect-ratio:unset; min-height:200px; height:100%;">
+              <img src="${feat.image || 'https://placehold.co/600x400/cc0000/ffffff?text=MBIRE+TV'}" alt="${feat.title}" style="height:100%; object-fit:cover;">
+              <span class="card-category" style="background:var(--green);">${feat.cat}</span>
+            </div>
+            <div class="card-body" style="display:flex; flex-direction:column; justify-content:center; padding:clamp(16px,4vw,32px);">
+              <div class="card-meta">
+                <span class="card-date"><i class="far fa-clock"></i> ${timeAgo(feat.date)}</span>
+                <span class="card-dot">●</span>
+                <span>By ${feat.author || 'MBIRE TV'}</span>
+              </div>
+              <h3 class="card-title" style="font-size:clamp(1.1rem,3.5vw,1.8rem); margin-bottom:16px;">${feat.title}</h3>
+              <p class="card-excerpt" style="margin-bottom:24px; font-size:0.95rem;">${excerpt}</p>
+              <div>
+                <a href="news-article.html?id=${feat.id}" class="btn btn-primary">Read Full Article <i class="fas fa-arrow-right"></i></a>
+              </div>
+            </div>
+          </div>
+        `;
+        
+
+      } else {
+        heroContainer.innerHTML = `
+          <div style="text-align:center;padding:48px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:var(--radius-lg);">
+            <p class="text-muted">No news articles published yet.</p>
+          </div>
+        `;
+      }
+
+      // Populate latest grid list (articles 1 to 4)
+      const grid = document.getElementById('articlesGrid');
+      if (grid) {
+        grid.innerHTML = '';
+        const listItems = articles.slice(1, 4);
+        if (listItems.length === 0) {
+          grid.innerHTML = '<p class="text-muted" style="grid-column:1/-1;text-align:center;">No recent articles.</p>';
+        } else {
+          listItems.forEach(art => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.cursor = 'pointer';
+            card.onclick = () => location.href = `news-article.html?id=${art.id}`;
+            card.innerHTML = `
+              <div class="card-img-wrap">
+                <img src="${art.image || 'https://placehold.co/600x400/cc0000/ffffff?text=MBIRE+TV'}" alt="${art.title}">
+                <span class="card-category" style="background:var(--green);">${art.cat}</span>
+              </div>
+              <div class="card-body">
+                <div class="card-meta">
+                  <span class="card-date"><i class="far fa-clock"></i> ${timeAgo(art.date)}</span>
+                </div>
+                <h3 class="card-title">${art.title}</h3>
+                <p class="card-excerpt">${art.body.substring(0, 100)}...</p>
+              </div>
+            `;
+            grid.appendChild(card);
+          });
+        }
+      }
+
+      // 2. Fetch YouTube Feed in real-time
+      fetchYouTubeVideos('indexVideosGrid', 4);
+
+      // 3. Check if channel is LIVE NOW — shows red banner if so
+      checkChannelLiveState();
+      setInterval(checkChannelLiveState, 60000);
+    });
+  </script>
+  <style>
+    @keyframes liveDotPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.3); }
+    }
+  </style>
+</body>
+</html>

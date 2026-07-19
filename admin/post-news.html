@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post News — MBIRE TV Admin</title>
+  <link rel="icon" type="image/png" href="../images/logo.png">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script src="../js/firebase.js"></script>
+</head>
+<body>
+
+  <div class="admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="sidebar-logo">
+        <img src="../images/logo.png" alt="MBIRE TV" onerror="this.style.display='none'">
+        <div>
+          <div class="sidebar-logo-text">MBIRE TV</div>
+          <div class="sidebar-logo-sub">Zimbabwe Admin</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-label">Dashboard</div>
+        <a href="index.html" class="sidebar-link"><span class="icon"><i class="fas fa-home"></i></span> Overview</a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Content</div>
+        <a href="post-news.html" class="sidebar-link active"><span class="icon"><i class="fas fa-pen-nib"></i></span> Post News</a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Management</div>
+        <a href="manage-users.html" class="sidebar-link"><span class="icon"><i class="fas fa-users"></i></span> Manage Users</a>
+        <a href="manage-comments.html" class="sidebar-link"><span class="icon"><i class="fas fa-comments"></i></span> Manage Comments</a>
+        <a href="manage-submissions.html" class="sidebar-link"><span class="icon"><i class="fas fa-paper-plane"></i></span> User Submissions</a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Site</div>
+        <a href="../index.html" class="sidebar-link"><span class="icon"><i class="fas fa-globe"></i></span> View Website</a>
+        <a href="#" class="sidebar-link" onclick="handleAdminLogout()"><span class="icon"><i class="fas fa-sign-out-alt"></i></span> Logout</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+
+      <div class="admin-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="mob-menu-btn" onclick="toggleMobileSidebar()"><i class="fas fa-bars"></i> Menu</button>
+          <div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:2px;letter-spacing:1px;text-transform:uppercase;" id="formModeLabel">Create New</p>
+            <h1 class="admin-title" id="formTitle">Post News Article</h1>
+          </div>
+        </div>
+        <a href="index.html" class="btn btn-ghost btn-sm"><i class="fas fa-arrow-left"></i> Back</a>
+      </div>
+
+      <div class="post-grid">
+        
+        <!-- Left: Article Body -->
+        <div>
+          <div class="admin-card" style="margin-bottom:20px;">
+            <h3 class="admin-card-title">Article Details</h3>
+
+            <div class="form-group">
+              <label class="form-label" for="artTitle">Headline / Title <span style="color:var(--red);">*</span></label>
+              <input type="text" class="form-input" id="artTitle" placeholder="e.g. Zimbabwe's Economy Rebounds After..." maxlength="150" oninput="document.getElementById('titleCount').textContent=this.value.length+'/150'">
+              <div class="char-count" id="titleCount">0/150</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="artBody">Full Article Content <span style="color:var(--red);">*</span></label>
+              <textarea class="form-textarea" id="artBody" placeholder="Write the full news story here. Use line breaks to separate paragraphs..." style="min-height:320px;" oninput="document.getElementById('bodyCount').textContent=this.value.length+' characters'"></textarea>
+              <div class="char-count" id="bodyCount">0 characters</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Meta, Image, Publish -->
+        <div>
+          <div class="admin-card" style="margin-bottom:20px;">
+            <h3 class="admin-card-title">Article Settings</h3>
+
+            <div class="form-group">
+              <label class="form-label" for="artCat">Category <span style="color:var(--red);">*</span></label>
+              <select class="form-select" id="artCat">
+                <option value="politics">Politics</option>
+                <option value="business">Business</option>
+                <option value="sports">Sports</option>
+                <option value="culture">Culture</option>
+                <option value="international">International</option>
+                <option value="local">Local News</option>
+                <option value="opinion">Opinion</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="artAuthor">Author Byline</label>
+              <input type="text" class="form-input" id="artAuthor" placeholder="e.g. MBIRE TV Desk" value="MBIRE TV Desk">
+            </div>
+          </div>
+
+          <div class="admin-card" style="margin-bottom:20px;">
+            <h3 class="admin-card-title">Upload Article Photo</h3>
+
+            <div class="form-group">
+              <div class="upload-zone" id="uploadZone">
+                <i class="fas fa-cloud-upload-alt upload-zone-icon"></i>
+                <p>Drag & drop photo here or <strong>browse files</strong></p>
+                <input type="file" id="artImageFile" accept="image/*">
+              </div>
+              <div class="upload-progress" id="uploadProgress">
+                <div class="upload-progress-bar" id="uploadProgressBar"></div>
+              </div>
+              <input type="hidden" id="artImageUrl">
+            </div>
+
+            <img src="" class="upload-preview" id="imgPreview" alt="Cover Preview">
+          </div>
+
+          <div class="admin-card">
+            <button class="btn btn-primary" onclick="publishArticle()" style="width:100%;justify-content:center;margin-bottom:12px;" id="publishBtn">
+              <i class="fas fa-paper-plane"></i> Publish Article
+            </button>
+            <button class="btn btn-ghost" onclick="clearForm()" style="width:100%;justify-content:center;">
+              <i class="fas fa-undo"></i> Clear Form
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // Guard: admin only
+    const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
+    if (!user || user.role !== 'superadmin') location.href = '../login.html';
+
+    // Mobile sidebar toggle
+    function toggleMobileSidebar() {
+      document.getElementById('adminSidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    // Set light mode explicitly
+    document.body.classList.add('light-mode');
+
+    // Drag and Drop Zone Config
+    const uploadZone = document.getElementById('uploadZone');
+    const imageInput = document.getElementById('artImageFile');
+    const progressBar = document.getElementById('uploadProgressBar');
+    const progressDiv = document.getElementById('uploadProgress');
+    const previewImg = document.getElementById('imgPreview');
+    const urlHidden = document.getElementById('artImageUrl');
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('drag-over');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('drag-over');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files.length) handleImageUpload(files[0]);
+    });
+
+    imageInput.addEventListener('change', (e) => {
+      const files = e.target.files;
+      if (files.length) handleImageUpload(files[0]);
+    });
+
+    async function handleImageUpload(file) {
+      if (!file.type.startsWith('image/')) {
+        showToast('Please upload an image file.', '⚠️');
+        return;
+      }
+
+      progressDiv.style.display = 'block';
+      progressBar.style.width = '20%';
+
+      try {
+        progressBar.style.width = '60%';
+        const downloadUrl = await fsUploadImage(file);
+        
+        progressBar.style.width = '100%';
+        urlHidden.value = downloadUrl;
+        
+        previewImg.src = downloadUrl;
+        previewImg.style.display = 'block';
+
+        // Show image-ready badge
+        let badge = document.getElementById('imgReadyBadge');
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.id = 'imgReadyBadge';
+          badge.style.cssText = 'margin-top:8px;display:flex;align-items:center;gap:8px;background:#f0fdf4;border:1.5px solid #22c55e;border-radius:8px;padding:8px 12px;font-size:0.82rem;color:#15803d;font-weight:600;';
+          document.getElementById('uploadZone').parentNode.appendChild(badge);
+        }
+        const shortUrl = downloadUrl.startsWith('data:') ? '[Base64 image — ready]' : downloadUrl.substring(0, 60) + '...';
+        badge.innerHTML = '<i class="fas fa-check-circle" style="color:#22c55e;"></i> Image ready: ' + shortUrl;
+        console.log('✅ Image uploaded. URL saved to form:', downloadUrl);
+        
+        showToast('Photo uploaded! Image is ready to be published.', '📸');
+        setTimeout(() => { progressDiv.style.display = 'none'; }, 800);
+      } catch (err) {
+        console.error(err);
+        showToast(err.message || 'Image upload failed. Try a smaller file.', '❌');
+        progressDiv.style.display = 'none';
+      }
+    }
+
+    // Edit mode: check URL param
+    let editMode = false;
+    let editId = null;
+
+    async function initPage() {
+      const params = new URLSearchParams(window.location.search);
+      editId = params.get('edit');
+      const prefillRaw = params.get('prefill');
+
+      if (editId) {
+        editMode = true;
+        document.getElementById('formModeLabel').textContent = 'Editing Article';
+        document.getElementById('formTitle').textContent = 'Edit News Article';
+        document.getElementById('publishBtn').innerHTML = '<i class="fas fa-save"></i> Save Changes';
+
+        const art = await fsGetArticleById(editId);
+        if (art) {
+          document.getElementById('artTitle').value = art.title || '';
+          document.getElementById('artBody').value = art.body || '';
+          document.getElementById('artCat').value = art.cat || 'politics';
+          document.getElementById('artAuthor').value = art.author || 'MBIRE TV Desk';
+          document.getElementById('artImageUrl').value = art.image || '';
+          if (art.image) {
+            previewImg.src = art.image;
+            previewImg.style.display = 'block';
+          }
+          document.getElementById('titleCount').textContent = (art.title || '').length + '/150';
+          document.getElementById('bodyCount').textContent = (art.body || '').length + ' characters';
+        }
+      } else if (prefillRaw) {
+        try {
+          const pre = JSON.parse(decodeURIComponent(prefillRaw));
+          document.getElementById('formModeLabel').textContent = 'Drafting From Submission';
+          document.getElementById('formTitle').textContent = 'Draft Article';
+          if (pre.title) { document.getElementById('artTitle').value = pre.title; document.getElementById('titleCount').textContent = pre.title.length + '/150'; }
+          if (pre.body) { document.getElementById('artBody').value = pre.body; document.getElementById('bodyCount').textContent = pre.body.length + ' characters'; }
+          if (pre.image) {
+            document.getElementById('artImageUrl').value = pre.image;
+            previewImg.src = pre.image;
+            previewImg.style.display = 'block';
+          }
+        } catch(e) { console.warn('Could not parse prefill param', e); }
+      }
+    }
+
+    async function publishArticle() {
+      const title = document.getElementById('artTitle').value.trim();
+      const body  = document.getElementById('artBody').value.trim();
+      const cat   = document.getElementById('artCat').value;
+      const author = document.getElementById('artAuthor').value.trim() || 'MBIRE TV Desk';
+      const image  = document.getElementById('artImageUrl').value.trim();
+
+      if (!title || !body) {
+        showToast('Title and article content are required.', '⚠️');
+        return;
+      }
+
+      const publishBtn = document.getElementById('publishBtn');
+      publishBtn.disabled = true;
+      publishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+      const artObj = {
+        id: editMode ? editId : 'art_' + Date.now(),
+        title,
+        body,
+        cat,
+        author,
+        image: image || ''
+      };
+      if (!editMode) {
+        artObj.date = new Date().toISOString();
+        artObj.views = 0;
+      }
+
+      // Debug: log what we're saving
+      console.log('📝 Saving article to Firestore:', artObj);
+      console.log('🖼️ Image field value:', image || '(empty - no image)');
+
+      if (!image) {
+        showToast('⚠️ Warning: No image uploaded. Article will save without a cover photo.', '⚠️');
+      }
+
+      try {
+        await fsSaveArticle(artObj);
+        showToast(editMode ? 'Article updated!' : 'Article published successfully!', '✅');
+        setTimeout(() => location.href = 'index.html', 1500);
+      } catch (err) {
+        console.error(err);
+        showToast('Error saving article: ' + err.message, '❌');
+        publishBtn.disabled = false;
+        publishBtn.innerHTML = editMode ? '<i class="fas fa-save"></i> Save Changes' : '<i class="fas fa-paper-plane"></i> Publish Article';
+      }
+    }
+
+    function clearForm() {
+      document.getElementById('artTitle').value = '';
+      document.getElementById('artBody').value = '';
+      document.getElementById('artImageUrl').value = '';
+      document.getElementById('artAuthor').value = 'MBIRE TV Desk';
+      document.getElementById('artCat').value = 'politics';
+      document.getElementById('titleCount').textContent = '0/150';
+      document.getElementById('bodyCount').textContent = '0 characters';
+      previewImg.style.display = 'none';
+      previewImg.src = '';
+    }
+
+    function handleAdminLogout() {
+      localStorage.removeItem('mbire_user');
+      location.href = '../login.html';
+    }
+
+    function showToast(msg, icon = '✅') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<span>${icon}</span><span class="toast-msg">${msg}</span>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+
+    initPage();
+  </script>
+</body>
+</html>

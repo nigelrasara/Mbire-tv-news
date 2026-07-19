@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Comments — MBIRE TV Admin</title>
+  <link rel="icon" type="image/png" href="../images/logo.png">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="../js/firebase.js"></script>
+</head>
+<body class="light-mode">
+
+  <div class="admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="sidebar-logo">
+        <img src="../images/logo.png" alt="MBIRE TV" onerror="this.style.display='none'">
+        <div>
+          <div class="sidebar-logo-text">MBIRE TV</div>
+          <div class="sidebar-logo-sub">Zimbabwe Admin</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-label">Dashboard</div>
+        <a href="index.html" class="sidebar-link"><span class="icon"><i class="fas fa-home"></i></span> Overview</a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Content</div>
+        <a href="post-news.html" class="sidebar-link"><span class="icon"><i class="fas fa-pen-nib"></i></span> Post News</a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Management</div>
+        <a href="manage-users.html" class="sidebar-link"><span class="icon"><i class="fas fa-users"></i></span> Manage Users</a>
+        <a href="manage-comments.html" class="sidebar-link active"><span class="icon"><i class="fas fa-comments"></i></span> Manage Comments</a>
+        <a href="manage-submissions.html" class="sidebar-link"><span class="icon"><i class="fas fa-paper-plane"></i></span> User Submissions</a>
+
+        <div class="sidebar-section-label" style="margin-top:16px;">Site</div>
+        <a href="../index.html" class="sidebar-link"><span class="icon"><i class="fas fa-globe"></i></span> View Website</a>
+        <a href="#" class="sidebar-link" onclick="handleAdminLogout()"><span class="icon"><i class="fas fa-sign-out-alt"></i></span> Logout</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+
+      <div class="admin-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="mob-menu-btn" onclick="toggleMobileSidebar()"><i class="fas fa-bars"></i> Menu</button>
+          <div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:2px;letter-spacing:1px;text-transform:uppercase;">Moderation</p>
+            <h1 class="admin-title">Manage Comments</h1>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="confirmDeleteAll()">
+            <i class="fas fa-trash-alt"></i> Clear All
+          </button>
+        </div>
+      </div>
+
+      <!-- Search bar -->
+      <div style="margin-bottom:20px;position:relative;max-width:380px;">
+        <input type="text" class="form-input" id="commentSearch" placeholder="Search by user or article title..." oninput="filterComments()">
+        <i class="fas fa-search" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;"></i>
+      </div>
+
+      <div class="admin-card">
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="commentsTable">
+            <thead>
+              <tr>
+                <th>Commenter</th>
+                <th>Comment</th>
+                <th>Article</th>
+                <th>Posted</th>
+                <th>Delete</th>
+              </tr>
+            </thead>
+            <tbody id="commentsTableBody">
+              <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted);">
+                <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;color:var(--red);display:block;margin-bottom:8px;"></i>
+                Loading user comments...
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // Guard
+    const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
+    if (!user || user.role !== 'superadmin') location.href = '../login.html';
+
+    // Explicitly light mode
+    document.body.classList.add('light-mode');
+
+    // Mobile sidebar toggle
+    function toggleMobileSidebar() {
+      document.getElementById('adminSidebar').classList.toggle('open');
+      document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+
+    let allComments = [];
+
+    function timeAgo(dateStr) {
+      const now = new Date(), date = new Date(dateStr);
+      const diff = Math.floor((now - date) / 1000);
+      if (diff < 60) return 'Just now';
+      if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + ' hrs ago';
+      return date.toLocaleDateString();
+    }
+
+    async function loadComments() {
+      allComments = await fsGetComments();
+      renderTable(allComments);
+    }
+
+    function renderTable(comments) {
+      const tbody = document.getElementById('commentsTableBody');
+      tbody.innerHTML = '';
+      if (!comments.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">No comments found.</td></tr>`;
+        return;
+      }
+      comments.forEach(c => {
+        const initials = (c.authorName || 'G').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-id', c.id);
+        tr.innerHTML = `
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-title);font-size:0.8rem;font-weight:700;flex-shrink:0;">${initials}</div>
+              <div>
+                <div style="font-weight:600;font-size:0.88rem;">${c.authorName || 'Guest'}</div>
+                <div style="font-size:0.75rem;color:var(--text-muted);">${c.authorEmail || ''}</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-size:0.85rem;max-width:260px;">
+            <span style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${c.text}</span>
+          </td>
+          <td style="font-size:0.8rem;color:var(--text-muted);max-width:160px;">
+            <span style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${c.articleTitle || 'Unknown Article'}</span>
+          </td>
+          <td style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;">${timeAgo(c.date)}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" style="color:var(--red);" title="Delete Comment" onclick="deleteComment('${c.id}')">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterComments() {
+      const query = document.getElementById('commentSearch').value.toLowerCase();
+      const filtered = allComments.filter(c =>
+        (c.authorName || '').toLowerCase().includes(query) ||
+        (c.text || '').toLowerCase().includes(query) ||
+        (c.articleTitle || '').toLowerCase().includes(query)
+      );
+      renderTable(filtered);
+    }
+
+    async function deleteComment(id) {
+      if (!confirm('Delete this comment permanently?')) return;
+      try {
+        await fsDeleteComment(id);
+        allComments = allComments.filter(c => c.id !== id);
+        renderTable(allComments);
+        showToast('Comment deleted.', '🗑️');
+      } catch (err) {
+        console.error(err);
+        showToast('Error deleting comment.', '❌');
+      }
+    }
+
+    async function confirmDeleteAll() {
+      if (!confirm('Delete ALL comments permanently? This cannot be undone.')) return;
+      const promises = allComments.map(c => fsDeleteComment(c.id));
+      await Promise.all(promises);
+      allComments = [];
+      renderTable([]);
+      showToast('All comments cleared.', '🗑️');
+    }
+
+    function handleAdminLogout() {
+      localStorage.removeItem('mbire_user');
+      location.href = '../login.html';
+    }
+
+    function showToast(msg, icon = '✅') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<span>${icon}</span><span class="toast-msg">${msg}</span>`;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+
+    loadComments();
+  </script>
+</body>
+</html>
