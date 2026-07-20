@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Profile — MBIRE TV ZIMBABWE</title>
+  <meta name="description" content="About MBIRE TV ZIMBABWE - Learn more about Zimbabwe's premier online independent news channel.">
+  <title>About Us — MBIRE TV ZIMBABWE</title>
   <link rel="icon" type="image/png" href="images/logo.png">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -50,7 +51,7 @@
       <li><a href="submit-news.html">Submit News</a></li>
     </ul>
     <div class="nav-actions">
-      <a href="login.html" class="btn-login active" id="navLoginBtn">Profile</a>
+      <a href="login.html" class="btn-login" id="navLoginBtn">Login</a>
       <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
     </div>
   </nav>
@@ -61,40 +62,28 @@
     <a href="videos.html">Videos</a>
     <a href="live.html">Live Broadcast</a>
     <a href="submit-news.html">Submit News</a>
-    <a href="login.html" class="active" id="mobLoginBtn">Profile</a>
+    <a href="login.html" id="mobLoginBtn">Login</a>
   </div>
 
   <main class="page-wrapper">
-    <div class="container" style="max-width:600px; padding-bottom:60px;">
-      
-      <div class="submit-card" style="margin-top:20px;">
-        <div class="submit-header">
-          <div style="width:64px; height:64px; border-radius:50%; background:var(--red); color:#ffffff; font-family:var(--font-title); font-size:1.8rem; font-weight:700; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;" id="profileInitials">M</div>
-          <h2 style="font-family:var(--font-title); font-size:1.6rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;" id="profileName">Member Name</h2>
-          <p style="font-size:0.875rem; color:var(--text-muted);" id="profileEmail">member@example.com</p>
-        </div>
+    <div class="container" style="max-width: 800px; margin: 20px auto;">
+      <div class="submit-card" style="padding: clamp(16px, 4vw, 32px);">
+        <h1 class="font-oswald uppercase ls-1" style="font-size: 1.8rem; color: var(--text); border-bottom: 2px solid var(--red); padding-bottom: 8px; margin-bottom: 20px;">
+          About MBIRE TV ZIMBABWE
+        </h1>
+        <div style="font-size: 0.95rem; line-height: 1.7; color: var(--text-dim); display: flex; flex-direction: column; gap: 16px;">
+          <p>Welcome to <strong>MBIRE TV ZIMBABWE</strong>, your trusted independent online media platform broadcasting from the heart of Zimbabwe to the world. We are committed to uncovering local and national stories, providing real-time video coverage, and offering a platform for voice and expression across the region.</p>
+          
+          <h3 class="font-oswald uppercase" style="color: var(--text); font-size: 1.1rem; margin-top: 10px;">Our Mission</h3>
+          <p>To deliver unbiased, comprehensive, and up-to-the-minute news coverage. MBIRE TV acts as a transparent mirror to society, ensuring accountability, educating the community, and providing interactive news submission options for citizens to speak on real situations in their neighborhoods.</p>
 
-        <div style="border-top:1.5px solid var(--border); border-bottom:1.5px solid var(--border); padding:20px 0; margin-bottom:24px; display:flex; flex-direction:column; gap:16px;">
-          <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
-            <span style="color:var(--text-muted);">Account Role</span>
-            <span style="font-weight:600; text-transform:uppercase; font-family:var(--font-title); letter-spacing:1px; color:var(--red);" id="profileRole">User</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
-            <span style="color:var(--text-muted);">Account Status</span>
-            <span style="font-weight:600; color:#22c55e;" id="profileStatus">Active</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
-            <span style="color:var(--text-muted);">Phone Number</span>
-            <span style="font-weight:600;" id="profilePhone">Not Provided</span>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:12px;">
-          <button class="btn btn-ghost" onclick="handleLogout()" style="flex:1;"><i class="fas fa-sign-out-alt"></i> Logout</button>
-          <a href="index.html" class="btn btn-primary" style="flex:1.2; text-align:center;">Return to Home</a>
+          <h3 class="font-oswald uppercase" style="color: var(--text); font-size: 1.1rem; margin-top: 10px;">Independent Coverage</h3>
+          <p>We pride ourselves on our editorial independence. MBIRE TV is not aligned with any political party or state interest. We rely on organic citizen journalism and public broadcasts to bring you the truth directly from the ground.</p>
+          
+          <h3 class="font-oswald uppercase" style="color: var(--text); font-size: 1.1rem; margin-top: 10px;">Connect With Us</h3>
+          <p>For breaking news tips, inquiries, or promotion opportunities, you can chat with our team directly via WhatsApp or join our fast-growing community channel on YouTube.</p>
         </div>
       </div>
-
     </div>
   </main>
 
@@ -143,9 +132,6 @@
               <span>mbiretvnews@gmail.com</span>
             </a>
           </div>
-          <a href="https://wa.me/27783657892?text=Hello%20MBIRE%20TV%20ZIMBABWE%2C%20I%20would%20like%20to%20get%20in%20touch." target="_blank" style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:#25d366;color:#fff;padding:9px 18px;border-radius:8px;font-family:var(--font-title);font-size:0.78rem;font-weight:700;letter-spacing:1px;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#1da851'" onmouseout="this.style.background='#25d366'">
-            <i class="fab fa-whatsapp" style="font-size:1rem;"></i> Chat on WhatsApp
-          </a>
         </div>
       </div>
       <div class="footer-bottom">
@@ -155,41 +141,26 @@
     </div>
   </footer>
 
+  <script src="js/transition.js"></script>
   <script>
-    // Set Year
     document.getElementById('year').textContent = new Date().getFullYear();
-
-    // Mobile nav toggle
     document.getElementById('hamburger').addEventListener('click', () => {
       document.getElementById('mobileNav').classList.toggle('open');
     });
-
-    // Scroll effect
     window.addEventListener('scroll', () => {
       document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40);
     });
 
-    // Guard: Load profile info
     const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
-    if (!user) {
-      location.href = 'login.html';
-    } else {
-      document.getElementById('profileName').textContent = user.name || 'Member';
-      document.getElementById('profileEmail').textContent = user.email || 'member@example.com';
-      document.getElementById('profileRole').textContent = user.role || 'user';
-      document.getElementById('profilePhone').textContent = user.phone || 'Not Provided';
-      
-      const initials = (user.name || 'M').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-      document.getElementById('profileInitials').textContent = initials;
+    if (user) {
+      const text = user.role === 'superadmin' ? 'Dashboard' : 'Profile';
+      const url = user.role === 'superadmin' ? 'admin/index.html' : 'profile.html';
+      document.getElementById('navLoginBtn').textContent = text;
+      document.getElementById('navLoginBtn').href = url;
+      document.getElementById('mobLoginBtn').textContent = text;
+      document.getElementById('mobLoginBtn').href = url;
     }
 
-    // Logout
-    function handleLogout() {
-      localStorage.removeItem('mbire_user');
-      location.href = 'login.html';
-    }
-
-    // Initialize Page
     document.addEventListener('DOMContentLoaded', async () => {
       const articles = await fsGetArticles(5);
       const tickerTrack = document.getElementById('tickerTrack');
@@ -201,7 +172,5 @@
       });
     });
   </script>
-  <script src="js/mini-player.js"></script>
-  <script src="js/transition.js"></script>
 </body>
 </html>

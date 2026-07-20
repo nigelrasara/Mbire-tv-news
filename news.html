@@ -44,6 +44,15 @@
 </head>
 <body class="light-mode">
 
+  <!-- Page Loader Transition -->
+  <div id="page-transition-loader" class="page-loader">
+    <div class="loader-content">
+      <div class="loader-logo">MBIRE TV</div>
+      <div class="loader-sub">ZIMBABWE</div>
+      <div class="loader-spinner"></div>
+    </div>
+  </div>
+
   <!-- Top Moving Ticker -->
   <div class="breaking-ticker">
     <div class="ticker-label"><span>⚡ BREAKING</span></div>
@@ -107,7 +116,7 @@
       </div>
 
       <!-- Articles Grid -->
-      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(320px,100%), 1fr)); gap:24px; padding-bottom:60px;" id="articlesGrid">
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(220px,100%), 1fr)); gap:24px; padding-bottom:60px;" id="articlesGrid">
         <div style="grid-column:1/-1; text-align:center; padding:48px;">
           <i class="fas fa-spinner fa-spin" style="font-size:2.5rem; color:var(--red); margin-bottom:16px;"></i>
           <p class="text-muted">Loading article archives...</p>
@@ -127,7 +136,18 @@
           <div class="social-links">
             <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="social-link" title="YouTube"><i class="fab fa-youtube"></i></a>
             <a href="https://wa.me/27783657892" target="_blank" class="social-link" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+            <a href="https://www.facebook.com/share/18fFRyaqub/?mibextid=wwXIfr" target="_blank" class="social-link" title="Facebook"><i class="fab fa-facebook"></i></a>
             <a href="mailto:mbiretvnews@gmail.com" class="social-link" title="Email"><i class="fas fa-envelope"></i></a>
+          </div>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Quick Links</h4>
+          <div class="footer-contacts">
+            <a href="about.html" class="footer-contact-item footer-contact-link">About Us</a>
+            <a href="contact.html" class="footer-contact-item footer-contact-link">Contact Us</a>
+            <a href="privacy.html" class="footer-contact-item footer-contact-link">Privacy Policy</a>
+            <a href="terms.html" class="footer-contact-item footer-contact-link">Terms & Conditions</a>
+            <a href="cookie.html" class="footer-contact-item footer-contact-link">Cookie Policy</a>
           </div>
         </div>
         <div>
@@ -140,6 +160,10 @@
             <a href="https://wa.me/27783657892" target="_blank" class="footer-contact-item footer-contact-link">
               <span class="icon" style="color:#25d366;"><i class="fab fa-whatsapp"></i></span>
               <span>+27 78 365 7892</span>
+            </a>
+            <a href="https://www.facebook.com/share/18fFRyaqub/?mibextid=wwXIfr" target="_blank" class="footer-contact-item footer-contact-link">
+              <span class="icon" style="color:#1877f2;"><i class="fab fa-facebook"></i></span>
+              <span>mbiretvzimbabwe</span>
             </a>
             <a href="mailto:mbiretvnews@gmail.com" class="footer-contact-item footer-contact-link">
               <span class="icon"><i class="fas fa-envelope"></i></span>
@@ -285,5 +309,7 @@
     // Initialize page
     loadArticlesPage();
   </script>
+  <script src="js/mini-player.js"></script>
+  <script src="js/transition.js"></script>
 </body>
 </html>

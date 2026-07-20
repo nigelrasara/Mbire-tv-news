@@ -143,9 +143,19 @@ function openVideoModal(videoId, title) {
     return;
   }
 
-  iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+  iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&enablejsapi=1&playsinline=1`;
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
+
+  const titleEl = document.getElementById('modalVideoTitle');
+  if (titleEl) titleEl.textContent = title || 'Video Comments';
+
+  loadModalComments(videoId);
+
+  // Track for mini player (will show if user navigates away)
+  if (window.MbireMiniPlayer) {
+    window.MbireMiniPlayer.show(videoId, title, false);
+  }
 
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
@@ -160,6 +170,111 @@ function openVideoModal(videoId, title) {
   }
 }
 
+// ─── Modal Video Comments System ─────────────────────────────
+let currentModalVideoId = '';
+let modalCommentsList = [];
+
+async function loadModalComments(videoId) {
+  currentModalVideoId = videoId;
+  const grid = document.getElementById('modalCommentsListGrid');
+  const userBadge = document.getElementById('modalCommentUserBadge');
+  const guestGroup = document.getElementById('modalGuestNameGroup');
+  const guestNameInput = document.getElementById('modalGuestNameInput');
+  if (!grid) return;
+
+  const localUser = JSON.parse(localStorage.getItem('mbire_user') || 'null');
+  if (localUser) {
+    // Logged in — hide name input, show member badge
+    if (guestGroup) guestGroup.style.display = 'none';
+    if (userBadge) {
+      userBadge.textContent = `Commenting as ${localUser.name} (${localUser.role === 'superadmin' ? 'Admin' : 'Member'})`;
+    }
+  } else {
+    // Guest — restore saved name and wire live badge update
+    const savedName = localStorage.getItem('mbire_guest_name') || '';
+    if (guestNameInput && savedName) {
+      guestNameInput.value = savedName;
+    }
+    if (userBadge) {
+      userBadge.textContent = savedName ? `Commenting as ${savedName}` : 'Enter your name above';
+    }
+  }
+
+  try {
+    grid.innerHTML = '<div style="text-align:center;padding:12px;"><i class="fas fa-spinner fa-spin" style="color:var(--red);"></i></div>';
+    modalCommentsList = await fsGetCommentsByArticle(videoId);
+    
+    if (modalCommentsList.length === 0) {
+      grid.innerHTML = '<p class="text-muted" style="text-align:center;padding:12px 0;font-size:0.85rem;">No comments on this video yet. Be the first to comment!</p>';
+      return;
+    }
+
+    grid.innerHTML = '';
+    modalCommentsList.forEach(cmt => {
+      const item = document.createElement('div');
+      item.className = 'comment-item';
+      item.style.cssText = 'display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;align-items:flex-start;';
+      const initials = (cmt.authorName || 'G').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+      item.innerHTML = `
+        <div class="comment-avatar" style="width:30px;height:30px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;flex-shrink:0;">${initials}</div>
+        <div class="comment-body" style="flex:1;">
+          <div class="comment-meta" style="display:flex;gap:8px;font-size:0.72rem;color:var(--text-muted);margin-bottom:2px;">
+            <span class="comment-user" style="font-weight:600;color:var(--text);">${cmt.authorName}</span>
+            <span class="comment-date">${timeAgo(cmt.date)}</span>
+          </div>
+          <p class="comment-text" style="font-size:0.82rem;color:var(--text-dim);margin:0;line-height:1.4;">${cmt.text}</p>
+        </div>
+      `;
+      grid.appendChild(item);
+    });
+  } catch (err) {
+    console.warn('Error loading modal comments:', err);
+  }
+}
+
+async function postNewModalComment() {
+  const input = document.getElementById('modalCommentInput');
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) { alert('Please write a comment first.'); return; }
+
+  const localUser = JSON.parse(localStorage.getItem('mbire_user') || 'null');
+  let authorName;
+
+  if (localUser) {
+    authorName = localUser.name;
+  } else {
+    // Guest must provide a name
+    const nameInput = document.getElementById('modalGuestNameInput');
+    const typedName = nameInput ? nameInput.value.trim() : '';
+    if (!typedName) {
+      nameInput && nameInput.focus();
+      alert('Please enter your name before commenting.');
+      return;
+    }
+    authorName = typedName;
+    try { localStorage.setItem('mbire_guest_name', typedName); } catch(e) {}
+  }
+
+  const newCmt = {
+    id: 'cmt_' + Date.now(),
+    articleId: currentModalVideoId,
+    authorName: authorName,
+    text: val,
+    date: new Date().toISOString()
+  };
+
+  try {
+    await fsSaveComment(newCmt);
+    input.value = '';
+    await loadModalComments(currentModalVideoId);
+  } catch (e) {
+    console.error('Error posting modal comment:', e);
+  }
+}
+
+window.postNewModalComment = postNewModalComment;
+
 // ─── Close Video Modal ──────────────────────────────────────
 function closeVideoModal() {
   const modal = document.getElementById('videoModal');
@@ -167,6 +282,8 @@ function closeVideoModal() {
   if (modal) modal.classList.remove('open');
   if (iframe) iframe.src = '';
   document.body.style.overflow = '';
+  // User explicitly stopped the video — clear mini player state
+  if (window.MbireMiniPlayer) window.MbireMiniPlayer.close();
 }
 
 // ─── Fetch Uploads Feed ──────────────────────────────────────
@@ -318,21 +435,27 @@ function manualRefreshLive() {
 }
 
 // ─── Start 60-second polling loop ─────────────────────────────
+// ─── Start 5-minute polling loop ─────────────────────────────
 function startLivePolling() {
   if (_livePollingInterval) clearInterval(_livePollingInterval);
-  let remaining = 60;
+  let remaining = 300; // 5 minutes
   const countdownEl = document.getElementById('refreshCountdown');
 
   const tick = () => {
     remaining--;
-    if (countdownEl) countdownEl.textContent = `Auto-check in ${remaining}s`;
+    if (countdownEl) {
+      const mins = Math.floor(remaining / 60);
+      const secs = remaining % 60;
+      const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      countdownEl.textContent = `Auto-check in ${timeStr}`;
+    }
     if (remaining <= 0) {
-      remaining = 60;
+      remaining = 300;
       checkChannelLiveState();
     }
   };
 
-  if (countdownEl) countdownEl.textContent = 'Auto-check in 60s';
+  if (countdownEl) countdownEl.textContent = 'Auto-check in 5m';
   _livePollingInterval = setInterval(tick, 1000);
 }
 
@@ -388,7 +511,11 @@ async function loadRecentLiveReplay() {
         <i class="fab fa-youtube"></i> Watch on YouTube
       </a>
     `;
-    player.src = `https://www.youtube.com/embed/${id}?rel=0`;
+    const targetSrc = `https://www.youtube.com/embed/${id}?rel=0`;
+    // Only update iframe src if it is not already playing this video to avoid disrupting the user
+    if (!player.src || !player.src.includes(id)) {
+      player.src = targetSrc;
+    }
     panel.style.display = 'block';
   };
 
@@ -495,6 +622,16 @@ async function checkChannelLiveState() {
 
     if (liveData.items && liveData.items.length > 0) {
       // ── STATE: LIVE NOW ───────────────────────────────────────
+      // Stop polling to prevent disrupting live playback!
+      if (_livePollingInterval) {
+        clearInterval(_livePollingInterval);
+        _livePollingInterval = null;
+      }
+      const countdownEl = document.getElementById('refreshCountdown');
+      if (countdownEl) {
+        countdownEl.textContent = 'Auto-check stopped (Live Active)';
+      }
+
       const liveVideo = liveData.items[0];
       const videoId   = liveVideo.id.videoId;
       const title     = liveVideo.snippet.title;
@@ -517,6 +654,16 @@ async function checkChannelLiveState() {
       // Update homepage live banner
       updateHomeLiveBanner(true, videoId, title);
 
+      // Track for mini player — if user navigates away from live.html, video continues
+      if (window.MbireMiniPlayer) {
+        window.MbireMiniPlayer.show(videoId, title, true);
+      }
+
+      // Load comments for the active live video
+      if (window.loadLiveComments) {
+        window.loadLiveComments(videoId);
+      }
+
       // Hide recent live panel while live is active
       const recentPanel = document.getElementById('recentLivePanel');
       if (recentPanel) recentPanel.style.display = 'none';
@@ -533,8 +680,44 @@ async function checkChannelLiveState() {
         const nextLive  = upcomingData.items[0];
         const nextId    = nextLive.id.videoId;
         const nextTitle = nextLive.snippet.title;
-        const rawTime   = nextLive.snippet.publishedAt;
-        const timeStr   = rawTime ? new Date(rawTime).toLocaleString() : 'soon';
+        
+        // Fetch actual video details to get scheduledStartTime
+        let actualStartTime = null;
+        try {
+          const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${nextId}&key=${YOUTUBE_CONFIG.apiKey}`;
+          const detailsRes = await fetch(detailsUrl);
+          if (detailsRes.ok) {
+            const detailsData = await detailsRes.json();
+            if (detailsData.items && detailsData.items.length > 0) {
+              const streamDetails = detailsData.items[0].liveStreamingDetails;
+              if (streamDetails && streamDetails.scheduledStartTime) {
+                actualStartTime = streamDetails.scheduledStartTime;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to fetch detailed stream start time:', e);
+        }
+
+        const rawTime = actualStartTime || nextLive.snippet.publishedAt;
+        const scheduledDate = rawTime ? new Date(rawTime) : null;
+        const now = new Date();
+
+        if (scheduledDate) {
+          // If the scheduled start time is in the past by more than 2 hours (stale or cancelled)
+          const gracePeriod = 2 * 60 * 60 * 1000; // 2 hours
+          if (scheduledDate.getTime() + gracePeriod < now.getTime()) {
+            showOffline('MBIRE TV ZIMBABWE is not currently broadcasting on YouTube. Check back soon or browse our recent broadcast below.');
+            return;
+          }
+        }
+
+        const timeStr = scheduledDate ? scheduledDate.toLocaleString() : 'soon';
+
+        // Load comments for the upcoming live premiere
+        if (window.loadLiveComments) {
+          window.loadLiveComments(nextId);
+        }
 
         if (livePlayer) livePlayer.style.display = 'none';
         if (offlineNotice) {
@@ -568,6 +751,9 @@ async function checkChannelLiveState() {
 
     // ── 3. No live & no upcoming → OFFLINE ─────────────────────
     showOffline('MBIRE TV ZIMBABWE is not currently broadcasting on YouTube. Check back soon or browse our recent broadcast below.');
+    if (window.loadLiveComments) {
+      window.loadLiveComments('live_stream');
+    }
 
   } catch (err) {
     console.error('Error checking live state:', err);

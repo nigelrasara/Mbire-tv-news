@@ -16,6 +16,15 @@
 </head>
 <body class="light-mode">
 
+  <!-- Page Loader Transition -->
+  <div id="page-transition-loader" class="page-loader">
+    <div class="loader-content">
+      <div class="loader-logo">MBIRE TV</div>
+      <div class="loader-sub">ZIMBABWE</div>
+      <div class="loader-spinner"></div>
+    </div>
+  </div>
+
   <!-- Top Moving Ticker -->
   <div class="breaking-ticker">
     <div class="ticker-label"><span>⚡ BREAKING</span></div>
@@ -59,20 +68,7 @@
 
   <main class="page-wrapper">
 
-    <!-- ═══ BRAND HERO BANNER ═══ -->
-    <section class="brand-hero-section">
-      <div class="container">
-        <div class="brand-hero-inner">
-          <div class="brand-hero-badge">
-            <span class="brand-hero-live-dot"></span>
-            <span>ZIMBABWE'S INDEPENDENT VOICE</span>
-          </div>
-          <h1 class="brand-hero-title">MBIRE TV<br><span class="brand-hero-zim">ZIMBABWE</span></h1>
-          <p class="brand-hero-tagline">Breaking News &bull; Live Coverage &bull; Community Voices</p>
-          <div class="brand-hero-divider"></div>
-        </div>
-      </div>
-    </section>
+
 
     <!-- Live Now Banner (appears only when channel is broadcasting) -->
     <section class="section" style="padding-top:15px;padding-bottom:0;">
@@ -112,7 +108,7 @@
           <h2 class="section-title">Written Articles</h2>
           <a href="news.html" class="view-all">See All Articles <i class="fas fa-arrow-right"></i></a>
         </div>
-        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(320px,100%), 1fr)); gap:24px;" id="articlesGrid">
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(220px,100%), 1fr)); gap:24px;" id="articlesGrid">
           <!-- Populated dynamically -->
         </div>
       </div>
@@ -133,7 +129,7 @@
           <i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--red);"></i>
         </div>
 
-        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(320px,100%), 1fr)); gap:24px;" id="indexVideosGrid">
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(220px,100%), 1fr)); gap:24px;" id="indexVideosGrid">
           <!-- Loaded directly from YouTube channel uploads -->
         </div>
       </div>
@@ -161,7 +157,18 @@
           <div class="social-links">
             <a href="https://youtube.com/@MBIRETVNews" target="_blank" class="social-link" title="YouTube"><i class="fab fa-youtube"></i></a>
             <a href="https://wa.me/27783657892" target="_blank" class="social-link" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+            <a href="https://www.facebook.com/share/18fFRyaqub/?mibextid=wwXIfr" target="_blank" class="social-link" title="Facebook"><i class="fab fa-facebook"></i></a>
             <a href="mailto:mbiretvnews@gmail.com" class="social-link" title="Email"><i class="fas fa-envelope"></i></a>
+          </div>
+        </div>
+        <div>
+          <h4 class="footer-col-title">Quick Links</h4>
+          <div class="footer-contacts">
+            <a href="about.html" class="footer-contact-item footer-contact-link">About Us</a>
+            <a href="contact.html" class="footer-contact-item footer-contact-link">Contact Us</a>
+            <a href="privacy.html" class="footer-contact-item footer-contact-link">Privacy Policy</a>
+            <a href="terms.html" class="footer-contact-item footer-contact-link">Terms & Conditions</a>
+            <a href="cookie.html" class="footer-contact-item footer-contact-link">Cookie Policy</a>
           </div>
         </div>
         <div>
@@ -174,6 +181,10 @@
             <a href="https://wa.me/27783657892" target="_blank" class="footer-contact-item footer-contact-link">
               <span class="icon" style="color:#25d366;"><i class="fab fa-whatsapp"></i></span>
               <span>+27 78 365 7892</span>
+            </a>
+            <a href="https://www.facebook.com/share/18fFRyaqub/?mibextid=wwXIfr" target="_blank" class="footer-contact-item footer-contact-link">
+              <span class="icon" style="color:#1877f2;"><i class="fab fa-facebook"></i></span>
+              <span>mbiretvzimbabwe</span>
             </a>
             <a href="mailto:mbiretvnews@gmail.com" class="footer-contact-item footer-contact-link">
               <span class="icon"><i class="fas fa-envelope"></i></span>
@@ -247,23 +258,23 @@
       const heroContainer = document.getElementById('heroContainer');
       if (articles.length > 0) {
         const feat = articles[0];
-        const excerpt = feat.body.substring(0, 240) + '...';
+        const excerpt = feat.body.substring(0, 140) + '...';
         heroContainer.innerHTML = `
-          <div class="card featured-story-card" style="border-color:var(--border);" id="featuredStoryCard">
-            <div class="card-img-wrap" style="aspect-ratio:unset; min-height:200px; height:100%;">
-              <img src="${feat.image || 'https://placehold.co/600x400/cc0000/ffffff?text=MBIRE+TV'}" alt="${feat.title}" style="height:100%; object-fit:cover;">
+          <div class="card featured-story-card" style="border-color:var(--border); cursor:pointer;" id="featuredStoryCard" onclick="location.href='news-article.html?id=${feat.id}'">
+            <div class="card-img-wrap">
+              <img src="${feat.image || 'https://placehold.co/600x400/cc0000/ffffff?text=MBIRE+TV'}" alt="${feat.title}">
               <span class="card-category" style="background:var(--green);">${feat.cat}</span>
             </div>
-            <div class="card-body" style="display:flex; flex-direction:column; justify-content:center; padding:clamp(16px,4vw,32px);">
+            <div class="card-body">
               <div class="card-meta">
                 <span class="card-date"><i class="far fa-clock"></i> ${timeAgo(feat.date)}</span>
                 <span class="card-dot">●</span>
                 <span>By ${feat.author || 'MBIRE TV'}</span>
               </div>
-              <h3 class="card-title" style="font-size:clamp(1.1rem,3.5vw,1.8rem); margin-bottom:16px;">${feat.title}</h3>
-              <p class="card-excerpt" style="margin-bottom:24px; font-size:0.95rem;">${excerpt}</p>
-              <div>
-                <a href="news-article.html?id=${feat.id}" class="btn btn-primary">Read Full Article <i class="fas fa-arrow-right"></i></a>
+              <h3 class="card-title">${feat.title}</h3>
+              <p class="card-excerpt">${excerpt}</p>
+              <div class="featured-story-btn-wrap">
+                <a href="news-article.html?id=${feat.id}" class="btn btn-primary btn-sm">Read Article <i class="fas fa-arrow-right"></i></a>
               </div>
             </div>
           </div>
@@ -323,5 +334,8 @@
       50% { opacity: 0.5; transform: scale(1.3); }
     }
   </style>
+  <script src="js/background-play.js"></script>
+  <script src="js/mini-player.js"></script>
+  <script src="js/transition.js"></script>
 </body>
 </html>
