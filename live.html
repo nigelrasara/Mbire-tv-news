@@ -181,40 +181,7 @@
   <main class="page-wrapper">
     <div class="live-wrapper">
       
-      <div class="section-header" style="margin-bottom:24px;">
-        <h1 class="section-title">Live Stream Portal</h1>
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-          <div class="refresh-indicator">
-            <span class="refresh-dot"></span>
-            <span id="refreshCountdown">Checking every 5m</span>
-          </div>
-          <button class="btn btn-ghost btn-sm" onclick="manualRefreshLive()"><i class="fas fa-sync-alt"></i> Refresh Now</button>
-        </div>
-      </div>
-
-      <!-- Live Stream Panel -->
-      <div class="live-panel">
-        <div class="live-bar">
-          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-            <div class="live-badge" id="liveIndicator">
-              <span class="live-dot" style="display:none;"></span>
-              <span>CHECKING...</span>
-            </div>
-            <h3 style="font-family:var(--font-title); font-size:1.05rem; margin:0; color:var(--text);" id="liveStatusText">Verifying live stream status...</h3>
-          </div>
-        </div>
-
-        <div class="live-player-container">
-          <!-- Active Iframe Stream -->
-          <iframe id="livePlayer" style="display:none; width:100%; height:100%;" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-          
-          <!-- Offline / Upcoming Notice -->
-          <div id="liveOfflineNotice" style="display:flex; padding:48px 24px; position:absolute; top:0; left:0; right:0; bottom:0; align-items:center; justify-content:center;">
-            <!-- Rendered by JS -->
-          </div>
-        </div>
-      </div>
-
+     
       <!-- Most Recent Live Broadcast (Replay) -->
       <div class="recent-live-panel" id="recentLivePanel" style="display:none;">
         <div class="recent-live-header">
