@@ -209,4 +209,3 @@ async function fsDeleteSubmission(id) {
   localStorage.setItem('mbire_submissions', JSON.stringify(all.filter(s => s.id !== id)));
 }
 
-// ─── Database Seeding Logic ───────────────────────────────────
