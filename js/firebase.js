@@ -104,6 +104,130 @@ async function fsDeleteArticle(id) {
   localStorage.setItem('mbire_articles', JSON.stringify(all.filter(a => a.id !== id)));
 }
 
+// ─── Popular Articles (Most Read) ─────────────────────────────
+async function fsGetPopularArticles(limitCount = 8) {
+  try {
+    const snap = await db.collection('articles')
+      .orderBy('views', 'desc')
+      .limit(limitCount)
+      .get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('Firestore popular articles read failed:', e);
+    const all = JSON.parse(localStorage.getItem('mbire_articles') || '[]');
+    return [...all].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, limitCount);
+  }
+}
+
+// ─── Article Reactions (Like / Dislike) ───────────────────────
+async function fsReactToArticle(articleId, userId, reactionType) {
+  try {
+    const docRef = db.collection('articles').doc(articleId);
+    const doc = await docRef.get();
+    if (!doc.exists) return null;
+    const data = doc.data();
+    const likedBy = data.likedBy || [];
+    const dislikedBy = data.dislikedBy || [];
+    let likes = data.likes || 0;
+    let dislikes = data.dislikes || 0;
+    const alreadyLiked = likedBy.includes(userId);
+    const alreadyDisliked = dislikedBy.includes(userId);
+
+    if (reactionType === 'like') {
+      if (alreadyLiked) {
+        await docRef.update({ likes: firebase.firestore.FieldValue.increment(-1), likedBy: firebase.firestore.FieldValue.arrayRemove(userId) });
+        return { likes: likes - 1, dislikes, userLiked: false, userDisliked: alreadyDisliked };
+      } else {
+        const updates = { likes: firebase.firestore.FieldValue.increment(1), likedBy: firebase.firestore.FieldValue.arrayUnion(userId) };
+        if (alreadyDisliked) { updates.dislikes = firebase.firestore.FieldValue.increment(-1); updates.dislikedBy = firebase.firestore.FieldValue.arrayRemove(userId); dislikes--; }
+        await docRef.update(updates);
+        return { likes: likes + 1, dislikes, userLiked: true, userDisliked: false };
+      }
+    } else {
+      if (alreadyDisliked) {
+        await docRef.update({ dislikes: firebase.firestore.FieldValue.increment(-1), dislikedBy: firebase.firestore.FieldValue.arrayRemove(userId) });
+        return { likes, dislikes: dislikes - 1, userLiked: alreadyLiked, userDisliked: false };
+      } else {
+        const updates = { dislikes: firebase.firestore.FieldValue.increment(1), dislikedBy: firebase.firestore.FieldValue.arrayUnion(userId) };
+        if (alreadyLiked) { updates.likes = firebase.firestore.FieldValue.increment(-1); updates.likedBy = firebase.firestore.FieldValue.arrayRemove(userId); likes--; }
+        await docRef.update(updates);
+        return { likes, dislikes: dislikes + 1, userLiked: false, userDisliked: true };
+      }
+    }
+  } catch(e) {
+    console.warn('Error reacting to article:', e);
+    return null;
+  }
+}
+
+// ─── Increment Article View Count ─────────────────────────────
+async function incrementArticleViews(articleId) {
+  try {
+    await db.collection('articles').doc(articleId).update({
+      views: firebase.firestore.FieldValue.increment(1)
+    });
+  } catch(e) { /* silent */ }
+}
+
+// ─── Comment Likes ────────────────────────────────────────────
+async function fsToggleCommentLike(commentId, userId) {
+  try {
+    const docRef = db.collection('comments').doc(commentId);
+    const doc = await docRef.get();
+    if (!doc.exists) return null;
+    const data = doc.data();
+    const likedBy = data.likedBy || [];
+    const hasLiked = likedBy.includes(userId);
+    if (hasLiked) {
+      await docRef.update({ likes: firebase.firestore.FieldValue.increment(-1), likedBy: firebase.firestore.FieldValue.arrayRemove(userId) });
+      return { likes: (data.likes || 1) - 1, userLiked: false };
+    } else {
+      await docRef.update({ likes: firebase.firestore.FieldValue.increment(1), likedBy: firebase.firestore.FieldValue.arrayUnion(userId) });
+      return { likes: (data.likes || 0) + 1, userLiked: true };
+    }
+  } catch(e) {
+    console.warn('Error toggling comment like:', e);
+    return null;
+  }
+}
+
+// ─── Comment Replies ──────────────────────────────────────────
+async function fsAddCommentReply(commentId, replyObj) {
+  try {
+    await db.collection('comments').doc(commentId).update({
+      replies: firebase.firestore.FieldValue.arrayUnion(replyObj)
+    });
+  } catch(e) {
+    console.warn('Error adding reply:', e);
+    throw e;
+  }
+}
+
+// ─── Site Metrics (Page Visits & Views) ───────────────────────
+async function recordPageVisit() {
+  try {
+    const statsRef = db.collection('stats').doc('visitors');
+    await statsRef.set({
+      count: firebase.firestore.FieldValue.increment(1)
+    }, { merge: true });
+  } catch (err) {
+    console.warn('Error recording page visit:', err);
+  }
+}
+
+async function fsGetStats() {
+  try {
+    const doc = await db.collection('stats').doc('visitors').get();
+    if (doc.exists) {
+      return doc.data();
+    }
+    return { count: 0 };
+  } catch (err) {
+    console.warn('Error fetching stats:', err);
+    return { count: 0 };
+  }
+}
+
 // ─── Comments ─────────────────────────────────────────────────
 async function fsGetComments() {
   try {
@@ -209,3 +333,106 @@ async function fsDeleteSubmission(id) {
   localStorage.setItem('mbire_submissions', JSON.stringify(all.filter(s => s.id !== id)));
 }
 
+// ─── Database Seeding Logic ───────────────────────────────────
+async function seedDatabaseIfEmpty() {
+  try {
+    const articlesSnap = await db.collection('articles').limit(1).get();
+    if (articlesSnap.empty) {
+      console.log('Seeding initial news database values...');
+      
+      const seedArticles = [
+        {
+          id: 'art_1',
+          title: "Zimbabwe's New Economic Measures Set for Second Half of 2026",
+          body: "The central government has officially released a new policy directive that aims to empower municipal authorities with more fiscal autonomy, allowing them to fund infrastructure projects directly from localized revenue collections.\n\nUnder the new blueprint, councils will be allowed to retain up to 60% of all localized business licenses and levy revenue. These funds will be earmarked specifically for improving municipal services, building roads, and securing clean water systems for local residents.\n\nLocal government representatives have welcomed this development, saying it will help resolve the ongoing service delivery challenges faced by councils across the country, especially in rural areas like Mbire.",
+          cat: "business",
+          image: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=900&q=80",
+          author: "MBIRE TV ZIMBABWE",
+          date: new Date(Date.now() - 3600000 * 3).toISOString(),
+          views: 145,
+          status: 'published'
+        },
+        {
+          id: 'art_2',
+          title: "Trade Expansion: Focus Shifts To Cross-Border Agriculture Exports",
+          body: "Agricultural analysts suggest that cross-border trade between Zimbabwe and its northern neighbors is set to triple as new import-export corridors open up.\n\nFarming syndicates in regions like Mbire are already preparing cooperative networks to export cotton, sorghum, and groundnuts directly to nearby border facilities, reducing transport overheads and increasing farmer profits.\n\nThe development follows regional discussions centered around simplifying agricultural customs clearance rates for smallholder cooperatives.",
+          cat: "politics",
+          image: "https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?w=900&q=80",
+          author: "MBIRE TV ZIMBABWE",
+          date: new Date(Date.now() - 3600000 * 8).toISOString(),
+          views: 92,
+          status: 'published'
+        },
+        {
+          id: 'art_3',
+          title: "Local Infrastructure Project Revitalizes Key Transport Hubs",
+          body: "Road rehabilitation work on major highways in Mashonaland Central has officially begun. The project aims to improve linkage roads between rural farming districts and national trunk roads, facilitating faster transport of cash crops.\n\nContractors confirmed that local labor from Mbire and neighboring villages represents over 70% of the active construction workforce.",
+          cat: "general",
+          image: "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=900&q=80",
+          author: "MBIRE TV ZIMBABWE",
+          date: new Date(Date.now() - 86400000).toISOString(),
+          views: 210,
+          status: 'published'
+        }
+      ];
+
+      for (const a of seedArticles) {
+        await db.collection('articles').doc(a.id).set(a);
+      }
+    }
+
+    const usersSnap = await db.collection('users').limit(1).get();
+    if (usersSnap.empty) {
+      console.log('Seeding initial users database values...');
+      
+      const seedUsers = [
+        { id: 'usr_1', name: 'Kudakwashe Moyo', email: 'kudakwashe@example.com', phone: '+27780000001', password: 'password123', role: 'user', status: 'active', date: new Date(Date.now() - 86400000 * 2).toISOString() },
+        { id: 'usr_2', name: 'Tinashe Nkomo', email: 'tinashe.nkomo@gmail.com', phone: '+27780000002', password: 'password123', role: 'user', status: 'active', date: new Date(Date.now() - 86400000 * 5).toISOString() },
+        { id: 'usr_3', name: 'Guest User', email: 'googleuser@gmail.com', phone: '+27780000003', password: 'password123', role: 'user', status: 'banned', date: new Date(Date.now() - 86400000 * 7).toISOString() }
+      ];
+
+      for (const u of seedUsers) {
+        await db.collection('users').doc(u.id).set(u);
+      }
+    }
+
+    const commentsSnap = await db.collection('comments').limit(1).get();
+    if (commentsSnap.empty) {
+      console.log('Seeding initial comments database values...');
+      
+      const seedComments = [
+        {
+          id: 'cmt_1',
+          articleId: 'art_1',
+          articleTitle: "Zimbabwe's New Economic Measures Set for Second Half of 2026",
+          authorName: 'Kudakwashe Moyo',
+          authorEmail: 'kudakwashe@example.com',
+          avatar: 'KM',
+          text: 'This is a great move by the government. Mbire district really needs better roads so we can transport our cotton and produce easily.',
+          date: new Date(Date.now() - 3600000 * 1).toISOString(),
+          status: 'approved'
+        },
+        {
+          id: 'cmt_2',
+          articleId: 'art_1',
+          articleTitle: "Zimbabwe's New Economic Measures Set for Second Half of 2026",
+          authorName: 'Tinashe Nkomo',
+          authorEmail: 'tinashe.nkomo@gmail.com',
+          avatar: 'TN',
+          text: 'I hope the councils manage these funds transparently. Service delivery is key!',
+          date: new Date(Date.now() - 3600000 * 2).toISOString(),
+          status: 'approved'
+        }
+      ];
+
+      for (const c of seedComments) {
+        await db.collection('comments').doc(c.id).set(c);
+      }
+    }
+  } catch (err) {
+    console.warn('Seeding failed:', err);
+  }
+}
+
+// Execute seeding check asynchronously
+seedDatabaseIfEmpty();

@@ -80,26 +80,38 @@
       </div>
 
       <!-- Stat summary Cards -->
-      <div class="stat-cards">
-        <div class="stat-card" onclick="document.getElementById('articlesTable').scrollIntoView({behavior: 'smooth'})">
+      <div class="stat-cards" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+        <div class="stat-card" onclick="document.getElementById('articlesTable').scrollIntoView({behavior: 'smooth'})" style="cursor:pointer;">
           <span class="stat-card-icon">📰</span>
           <span class="stat-card-value" id="statArticles">0</span>
           <span class="stat-card-label">Total Articles</span>
           <span class="stat-card-change"><i class="fas fa-chart-line"></i> Active Posts</span>
         </div>
-        <div class="stat-card" onclick="location.href='manage-users.html'">
+        <div class="stat-card" style="cursor:pointer;" onclick="document.getElementById('articlesTable').scrollIntoView({behavior: 'smooth'})">
+          <span class="stat-card-icon">👀</span>
+          <span class="stat-card-value" id="statTotalViews">0</span>
+          <span class="stat-card-label">Total Article Views</span>
+          <span class="stat-card-change"><i class="fas fa-eye"></i> Sum of all views</span>
+        </div>
+        <div class="stat-card" style="cursor:default;">
+          <span class="stat-card-icon">🌐</span>
+          <span class="stat-card-value" id="statVisitors">0</span>
+          <span class="stat-card-label">Page Visitors</span>
+          <span class="stat-card-change"><i class="fas fa-users"></i> Unique entries</span>
+        </div>
+        <div class="stat-card" onclick="location.href='manage-users.html'" style="cursor:pointer;">
           <span class="stat-card-icon">👥</span>
           <span class="stat-card-value" id="statUsers">0</span>
           <span class="stat-card-label">Registered Users</span>
           <span class="stat-card-change"><i class="fas fa-user-plus"></i> Total Members</span>
         </div>
-        <div class="stat-card" onclick="location.href='manage-comments.html'">
+        <div class="stat-card" onclick="location.href='manage-comments.html'" style="cursor:pointer;">
           <span class="stat-card-icon">💬</span>
           <span class="stat-card-value" id="statComments">0</span>
           <span class="stat-card-label">User Comments</span>
           <span class="stat-card-change"><i class="fas fa-comment-dots"></i> Total Posted</span>
         </div>
-        <div class="stat-card" onclick="location.href='manage-submissions.html'">
+        <div class="stat-card" onclick="location.href='manage-submissions.html'" style="cursor:pointer;">
           <span class="stat-card-icon">✉️</span>
           <span class="stat-card-value" id="statSubmissions">0</span>
           <span class="stat-card-label">User Submissions</span>
@@ -179,12 +191,25 @@
 
     // Load admin metrics
     async function loadDashboardMetrics() {
+      if (typeof recordPageVisit === 'function') recordPageVisit();
       articlesList = await fsGetArticles(100);
       const users = await fsGetUsers();
       const comments = await fsGetComments();
       const submissions = await fsGetSubmissions();
 
+      // Calculate total views
+      const totalViews = articlesList.reduce((acc, art) => acc + (art.views || 0), 0);
+
+      // Fetch global page visitor stats
+      let totalVisitors = 0;
+      if (typeof fsGetStats === 'function') {
+        const stats = await fsGetStats();
+        totalVisitors = stats.count || stats.totalVisitors || 0;
+      }
+
       animateCount(document.getElementById('statArticles'), articlesList.length);
+      animateCount(document.getElementById('statTotalViews'), totalViews);
+      animateCount(document.getElementById('statVisitors'), totalVisitors);
       animateCount(document.getElementById('statUsers'), users.length);
       animateCount(document.getElementById('statComments'), comments.length);
       animateCount(document.getElementById('statSubmissions'), submissions.length);

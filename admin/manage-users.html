@@ -136,6 +136,7 @@
     };
 
     async function loadUsers() {
+      if (typeof recordPageVisit === 'function') recordPageVisit();
       allUsers = await fsGetUsers();
       renderTable(allUsers);
     }

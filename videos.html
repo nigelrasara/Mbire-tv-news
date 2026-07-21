@@ -222,6 +222,7 @@
 
     // Initialize Page
     document.addEventListener('DOMContentLoaded', async () => {
+      if (typeof recordPageVisit === 'function') recordPageVisit();
       // Seed ticker
       const articles = await fsGetArticles(5);
       const tickerTrack = document.getElementById('tickerTrack');

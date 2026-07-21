@@ -57,7 +57,6 @@ function renderVideoCard(video) {
   const thumb = snippet.thumbnails?.medium?.url || snippet.thumbnails?.high?.url || 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
   const dateStr = snippet.publishedAt ? timeAgo(snippet.publishedAt) : '';
   const cat = guessCategory(title, snippet.description || '');
-  const catLabel = cat.charAt(0).toUpperCase() + cat.slice(1);
 
   const card = document.createElement('div');
   card.className = 'card';
@@ -68,7 +67,6 @@ function renderVideoCard(video) {
   card.innerHTML = `
     <div class="card-img-wrap">
       <img src="${thumb}" alt="${title}" loading="lazy">
-      <span class="card-category">${catLabel}</span>
       <div class="card-play">
         <div class="play-icon"><i class="fas fa-play"></i></div>
       </div>
@@ -100,14 +98,12 @@ function renderVideoRow(video, isNewest = false) {
   const thumb = snippet.thumbnails?.medium?.url || snippet.thumbnails?.high?.url || 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
   const dateStr = snippet.publishedAt ? timeAgo(snippet.publishedAt) : '';
   const cat = guessCategory(title, snippet.description || '');
-  const catLabel = cat.charAt(0).toUpperCase() + cat.slice(1);
 
   const row = document.createElement('div');
   row.className = 'video-row';
   row.innerHTML = `
     <div class="video-row-thumb">
       <img src="${thumb}" alt="${title}" loading="lazy">
-      <span class="video-row-badge">${catLabel}</span>
       <div class="video-row-play"><i class="fas fa-play"></i></div>
     </div>
     <div class="video-row-body">
@@ -581,6 +577,9 @@ async function checkChannelLiveState() {
 
   // ── OFFLINE display helper ──────────────────────────────────
   const showOffline = (msg) => {
+    const livePanel = document.querySelector('.live-panel');
+    if (livePanel) livePanel.style.display = 'none';
+
     if (livePlayer) livePlayer.style.display = 'none';
     if (offlineNotice) {
       offlineNotice.style.display = 'flex';
@@ -635,6 +634,9 @@ async function checkChannelLiveState() {
       const liveVideo = liveData.items[0];
       const videoId   = liveVideo.id.videoId;
       const title     = liveVideo.snippet.title;
+
+      const livePanel = document.querySelector('.live-panel');
+      if (livePanel) livePanel.style.display = 'block';
 
       if (livePlayer) {
         livePlayer.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0`;
@@ -718,6 +720,9 @@ async function checkChannelLiveState() {
         if (window.loadLiveComments) {
           window.loadLiveComments(nextId);
         }
+
+        const livePanel = document.querySelector('.live-panel');
+        if (livePanel) livePanel.style.display = 'block';
 
         if (livePlayer) livePlayer.style.display = 'none';
         if (offlineNotice) {

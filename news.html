@@ -236,6 +236,8 @@
       }
 
       articles.forEach(art => {
+        const isPdf = art.type === 'pdf';
+        const bodyPreview = isPdf ? '📄 PDF Document — click to open' : (art.body || '').substring(0, 120) + '...';
         const card = document.createElement('div');
         card.className = 'card';
         card.style.cursor = 'pointer';
@@ -243,14 +245,14 @@
         card.innerHTML = `
           <div class="card-img-wrap">
             <img src="${art.image || 'https://placehold.co/600x400/cc0000/ffffff?text=MBIRE+TV'}" alt="${art.title}" loading="lazy">
-            <span class="card-category" style="background:var(--green);">${art.cat}</span>
+            <span class="card-category" style="background:${isPdf ? '#CC0000' : 'var(--green)'};">${isPdf ? 'PDF' : art.cat}</span>
           </div>
           <div class="card-body">
             <div class="card-meta">
               <span class="card-date"><i class="far fa-clock"></i> ${timeAgo(art.date)}</span>
             </div>
             <h3 class="card-title">${art.title}</h3>
-            <p class="card-excerpt">${art.body.substring(0, 120)}...</p>
+            <p class="card-excerpt">${bodyPreview}</p>
           </div>
         `;
         grid.appendChild(card);
@@ -258,6 +260,7 @@
     }
 
     async function loadArticlesPage() {
+      if (typeof recordPageVisit === 'function') recordPageVisit();
       allArticles = await fsGetArticles(100);
       
       // Seed ticker with headings

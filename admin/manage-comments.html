@@ -121,6 +121,7 @@
     }
 
     async function loadComments() {
+      if (typeof recordPageVisit === 'function') recordPageVisit();
       allComments = await fsGetComments();
       renderTable(allComments);
     }

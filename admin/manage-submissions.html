@@ -104,6 +104,7 @@
     }
 
     async function loadSubmissions() {
+      if (typeof recordPageVisit === 'function') recordPageVisit();
       submissions = await fsGetSubmissions();
       renderGrid(submissions);
     }

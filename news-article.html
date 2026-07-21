@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Article — MBIRE TV ZIMBABWE</title>
+  <!-- Open Graph Meta Tags for Facebook & WhatsApp link preview -->
+  <meta property="og:title" content="MBIRE TV ZIMBABWE — News Article">
+  <meta property="og:description" content="Read the latest breaking news and reports from Mbire TV Zimbabwe.">
+  <meta property="og:image" content="images/logo.png">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="MBIRE TV ZIMBABWE">
   <link rel="icon" type="image/png" href="images/logo.png">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -122,6 +128,60 @@
       color: var(--text-dim);
       line-height: 1.5;
     }
+    /* ─── Reaction Bar ─────────── */
+    .reaction-bar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      margin-bottom: 32px; padding: 18px 20px;
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+    .react-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 18px; border-radius: 50px; border: 2px solid var(--border);
+      background: transparent; font-family: var(--font-title); font-size: 0.85rem;
+      font-weight: 700; cursor: pointer; transition: all 0.2s; color: var(--text);
+    }
+    .react-btn:hover { transform: scale(1.06); }
+    .react-btn.liked { background: rgba(34,197,94,0.12); border-color: #22c55e; color: #15803d; }
+    .react-btn.disliked { background: rgba(239,68,68,0.1); border-color: #ef4444; color: #b91c1c; }
+    .share-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 18px; border-radius: 50px; border: 2px solid var(--border);
+      background: transparent; font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; color: var(--text);
+      font-family: var(--font-title); text-decoration: none;
+    }
+    .share-btn:hover { background: var(--border); }
+    .share-btn.fb { border-color: #1877f2; color: #1877f2; }
+    .share-btn.fb:hover { background: rgba(24,119,242,0.1); }
+    .share-btn.wa { border-color: #25d366; color: #25d366; }
+    .share-btn.wa:hover { background: rgba(37,211,102,0.1); }
+    .share-btn.copy { border-color: #6B7280; color: #6B7280; }
+    .share-btn.copy:hover { background: rgba(107,114,128,0.1); }
+    /* ─── Inline images in article body ─── */
+    .article-inline-img {
+      width: 100%; border-radius: var(--radius); margin: 24px 0;
+      cursor: zoom-in; display: block; object-fit: cover; max-height: 500px;
+    }
+    /* ─── PDF render section ─── */
+    .pdf-reader-wrapper {
+      width: 100%; border-radius: var(--radius-lg); overflow: hidden;
+      border: 2px solid var(--border); margin-bottom: 32px;
+    }
+    .pdf-reader-wrapper iframe { width: 100%; min-height: 80vh; border: none; display: block; }
+    /* ─── Comment actions ─── */
+    .comment-actions { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+    .cmt-action-btn {
+      background: none; border: none; font-size: 0.78rem; font-weight: 700;
+      cursor: pointer; color: var(--text-muted); display: flex; align-items: center;
+      gap: 4px; transition: color 0.15s; font-family: var(--font-title); padding: 0;
+    }
+    .cmt-action-btn:hover { color: var(--red); }
+    .cmt-action-btn.liked { color: #22c55e; }
+    .reply-form { display: none; margin-top: 10px; }
+    .reply-list { margin-top: 10px; padding-left: 12px; border-left: 3px solid var(--border); }
+    .reply-item { padding: 8px 0; font-size: 0.82rem; color: var(--text-dim); }
+    .reply-item strong { color: var(--text); font-weight: 700; font-size: 0.82rem; }
   </style>
 </head>
 <body class="light-mode">
@@ -192,10 +252,12 @@
             <span class="card-date" id="articleDate"><i class="far fa-clock"></i> Recent</span>
             <span class="card-dot">●</span>
             <span class="card-author">By <span id="articleAuthor">MBIRE TV</span></span>
+            <span class="card-dot">●</span>
+            <span style="font-size:0.8rem; color:var(--text-muted);"><i class="far fa-eye"></i> <span id="articleViews">0</span> views</span>
           </div>
         </div>
 
-        <!-- Banner cover image (Click to view Lightbox) -->
+        <!-- Banner cover image -->
         <div class="article-banner" id="articleImageWrapper">
           <img src="" alt="News Image" id="articleImage">
         </div>
@@ -204,7 +266,37 @@
         <div class="article-content" id="articleContent">
           <p>Please wait, loading article story...</p>
         </div>
+
+        <!-- PDF Reader (shown for PDF articles) -->
+        <div id="pdfReaderSection" style="display:none;">
+          <div class="pdf-reader-wrapper">
+            <iframe id="pdfIframe" src="" allowfullscreen></iframe>
+          </div>
+          <a id="pdfDownloadLink" href="" download target="_blank" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;margin-bottom:24px;">
+            <i class="fas fa-download"></i> Download PDF
+          </a>
+        </div>
       </article>
+
+      <!-- Reaction Bar -->
+      <div class="reaction-bar" id="reactionBar">
+        <button class="react-btn" id="likeBtn" onclick="handleArticleReaction('like')">
+          <i class="far fa-thumbs-up"></i> <span id="likeCount">0</span> Likes
+        </button>
+        <button class="react-btn" id="dislikeBtn" onclick="handleArticleReaction('dislike')">
+          <i class="far fa-thumbs-down"></i> <span id="dislikeCount">0</span> Dislikes
+        </button>
+        <div style="flex:1;"></div>
+        <button id="shareFb" onclick="shareToFacebook()" class="share-btn fb">
+          <i class="fab fa-facebook-f"></i> Facebook
+        </button>
+        <button id="shareWa" onclick="shareToWhatsApp()" class="share-btn wa">
+          <i class="fab fa-whatsapp"></i> WhatsApp
+        </button>
+        <button class="share-btn copy" onclick="copyArticleLink()">
+          <i class="fas fa-link"></i> Copy Link
+        </button>
+      </div>
 
       <!-- Comments System Section -->
       <section class="comments-section">
@@ -361,6 +453,54 @@
       }
     }
 
+    // ─── Share Functions ─────────────────────────────────────────
+    async function shareToWhatsApp() {
+      const d = window._shareData || {};
+      const title = d.title || document.title;
+      const url   = d.url   || window.location.href;
+      const image = d.image || '';
+
+      // Use native Web Share API on mobile — opens WhatsApp share sheet with image preview
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, text: title, url });
+          return;
+        } catch (e) {
+          if (e.name === 'AbortError') return;
+        }
+      }
+
+      // Desktop fallback: wa.me with message text including image URL
+      const msg = `*${title}*\n${url}${image ? '\n' + image : ''}`;
+      window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+    }
+
+    function shareToFacebook() {
+      const d = window._shareData || {};
+      const url = d.url || window.location.href;
+      window.open(
+        'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url),
+        '_blank',
+        'width=600,height=400'
+      );
+    }
+
+    function copyArticleLink() {
+      const d = window._shareData || {};
+      const url = d.url || window.location.href;
+      navigator.clipboard.writeText(url).then(() => {
+        showToast('Link copied to clipboard!', '🔗');
+      }).catch(() => {
+        const el = document.createElement('textarea');
+        el.value = url;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        showToast('Link copied!', '🔗');
+      });
+    }
+
     // Helper date formatting
     function timeAgo(dateStr) {
       const now = new Date();
@@ -377,6 +517,13 @@
     let currentArticleTitle = '';
     let commentsList = [];
 
+    // Stable anonymous user ID for reactions
+    const reactUserId = (function() {
+      let id = localStorage.getItem('mbire_react_uid');
+      if (!id) { id = 'u_' + Date.now() + '_' + Math.random().toString(36).substr(2,6); localStorage.setItem('mbire_react_uid', id); }
+      return id;
+    })();
+
     // Load Article & Comments
     async function loadArticleData() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -391,7 +538,11 @@
         return;
       }
 
-      // Fetch article detail
+      // Track visit + increment views
+      if (typeof recordPageVisit === 'function') recordPageVisit();
+      if (typeof incrementArticleViews === 'function') incrementArticleViews(currentArticleId);
+
+      // Fetch article
       const art = await fsGetArticleById(currentArticleId);
       if (!art) {
         document.getElementById('articleDetail').innerHTML = `
@@ -401,17 +552,15 @@
       }
 
       currentArticleTitle = art.title;
+      document.title = art.title + ' — MBIRE TV ZIMBABWE';
       document.getElementById('articleTitle').textContent = art.title;
       document.getElementById('articleCat').textContent = art.cat.toUpperCase();
-      document.getElementById('articleCat').className = `card-category`;
-      document.getElementById('articleCat').style.position = 'static';
-      document.getElementById('articleCat').style.display = 'inline-block';
-      document.getElementById('articleCat').style.marginBottom = '12px';
-      document.getElementById('articleCat').style.background = 'var(--green)';
-      
+      document.getElementById('articleCat').className = 'card-category';
+      document.getElementById('articleCat').style.cssText = 'position:static;display:inline-block;margin-bottom:12px;background:var(--green);';
       document.getElementById('articleDate').innerHTML = `<i class="far fa-clock"></i> ${timeAgo(art.date)}`;
       document.getElementById('articleAuthor').textContent = art.author || 'MBIRE TV';
-      
+      if (document.getElementById('articleViews')) document.getElementById('articleViews').textContent = (art.views || 0).toLocaleString();
+
       const imgEl = document.getElementById('articleImage');
       if (imgEl && art.image) {
         imgEl.src = art.image;
@@ -420,10 +569,45 @@
         document.getElementById('articleImageWrapper').style.display = 'none';
       }
 
-      const contentEl = document.getElementById('articleContent');
-      contentEl.innerHTML = `<p>${art.body.replace(/\n/g, '</p><p>')}</p>`;
+      // PDF or standard article
+      if (art.type === 'pdf' && art.pdfUrl) {
+        document.getElementById('articleContent').style.display = 'none';
+        const pdfSec = document.getElementById('pdfReaderSection');
+        if (pdfSec) {
+          pdfSec.style.display = 'block';
+          document.getElementById('pdfIframe').src = art.pdfUrl;
+          document.getElementById('pdfDownloadLink').href = art.pdfUrl;
+        }
+      } else {
+        renderArticleBody(art.body || '');
+      }
 
-      // Load marquee ticker titles
+      // Update metadata & Open Graph tags dynamically
+      const setMeta = (property, content) => {
+        let meta = document.querySelector(`meta[property="${property}"]`);
+        if (!meta) {
+          meta = document.createElement('meta');
+          meta.setAttribute('property', property);
+          document.head.appendChild(meta);
+        }
+        meta.setAttribute('content', content);
+      };
+      setMeta('og:title', art.title);
+      setMeta('og:description', art.body ? art.body.substring(0, 150) + '...' : 'Read the full story on MBIRE TV.');
+      setMeta('og:image', art.image || window.location.origin + '/images/logo.png');
+      setMeta('og:url', window.location.href);
+
+      // Reaction bar
+      updateReactionUI(art.likes || 0, art.dislikes || 0, art.likedBy || [], art.dislikedBy || []);
+
+      // Store share data so button handlers can access it
+      window._shareData = {
+        title: art.title,
+        url: window.location.href,
+        image: art.image || ''
+      };
+
+      // Ticker
       const allNews = await fsGetArticles(5);
       const tickerTrack = document.getElementById('tickerTrack');
       allNews.forEach(item => {
@@ -433,8 +617,54 @@
         tickerTrack.appendChild(span);
       });
 
-      // Load comments
       await reloadComments();
+    }
+
+    function renderArticleBody(body) {
+      const contentEl = document.getElementById('articleContent');
+      contentEl.innerHTML = '';
+      const parts = body.split(/\[image:(https?[^\]]+)\]/g);
+      for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 0) {
+          const div = document.createElement('div');
+          div.innerHTML = '<p>' + (parts[i] || '').replace(/\n+/g, '</p><p>') + '</p>';
+          contentEl.appendChild(div);
+        } else {
+          const img = document.createElement('img');
+          img.src = parts[i];
+          img.className = 'article-inline-img';
+          img.onclick = () => openLightbox(parts[i]);
+          contentEl.appendChild(img);
+        }
+      }
+    }
+
+    function updateReactionUI(likes, dislikes, likedBy, dislikedBy) {
+      const likeBtn = document.getElementById('likeBtn');
+      const dislikeBtn = document.getElementById('dislikeBtn');
+      if (!likeBtn || !dislikeBtn) return;
+      document.getElementById('likeCount').textContent = likes;
+      document.getElementById('dislikeCount').textContent = dislikes;
+      if (likedBy.includes(reactUserId)) { likeBtn.classList.add('liked'); likeBtn.querySelector('i').className = 'fas fa-thumbs-up'; }
+      else { likeBtn.classList.remove('liked'); likeBtn.querySelector('i').className = 'far fa-thumbs-up'; }
+      if (dislikedBy.includes(reactUserId)) { dislikeBtn.classList.add('disliked'); dislikeBtn.querySelector('i').className = 'fas fa-thumbs-down'; }
+      else { dislikeBtn.classList.remove('disliked'); dislikeBtn.querySelector('i').className = 'far fa-thumbs-down'; }
+    }
+
+    async function handleArticleReaction(type) {
+      if (!currentArticleId) return;
+      const result = await fsReactToArticle(currentArticleId, reactUserId, type);
+      if (result) {
+        updateReactionUI(result.likes, result.dislikes,
+          result.userLiked ? [reactUserId] : [],
+          result.userDisliked ? [reactUserId] : []);
+      }
+    }
+
+    function copyArticleLink() {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        showToast('Article link copied!', '🔗');
+      }).catch(() => { prompt('Copy this link:', window.location.href); });
     }
 
     async function reloadComments() {
@@ -442,19 +672,21 @@
       const grid = document.getElementById('commentsListGrid');
       const countEl = document.getElementById('commentCount');
       if (!grid || !countEl) return;
-
       countEl.textContent = commentsList.length;
       grid.innerHTML = '';
-
       if (commentsList.length === 0) {
-        grid.innerHTML = `<p class="text-muted" style="text-align:center;padding:24px 0;">No comments on this article yet. Be the first to comment!</p>`;
+        grid.innerHTML = `<p class="text-muted" style="text-align:center;padding:24px 0;">No comments yet. Be the first!</p>`;
         return;
       }
-
       commentsList.forEach(cmt => {
         const initials = cmt.avatar || (cmt.authorName || 'G').substring(0, 2).toUpperCase();
+        const cmtLikes = cmt.likes || 0;
+        const hasLiked = (cmt.likedBy || []).includes(reactUserId);
+        const replies = cmt.replies || [];
         const item = document.createElement('div');
         item.className = 'comment-item';
+        let repliesHTML = replies.length > 0 ? `<div class="reply-list">${replies.map(r =>
+          `<div class="reply-item"><strong>${r.authorName}</strong>: ${r.text} <span style="font-size:0.7rem;color:var(--text-muted);margin-left:6px;">${timeAgo(r.date)}</span></div>`).join('')}</div>` : '';
         item.innerHTML = `
           <div class="comment-avatar">${initials}</div>
           <div class="comment-body">
@@ -463,10 +695,55 @@
               <span class="comment-date">${timeAgo(cmt.date)}</span>
             </div>
             <p class="comment-text">${cmt.text}</p>
+            <div class="comment-actions">
+              <button class="cmt-action-btn ${hasLiked ? 'liked' : ''}" onclick="likeComment('${cmt.id}', this)">
+                <i class="${hasLiked ? 'fas' : 'far'} fa-thumbs-up"></i> <span>${cmtLikes}</span>
+              </button>
+              <button class="cmt-action-btn" onclick="toggleReplyForm('${cmt.id}')">
+                <i class="far fa-comment"></i> Reply
+              </button>
+            </div>
+            ${repliesHTML}
+            <div class="reply-form" id="replyForm_${cmt.id}">
+              <input type="text" id="replyInput_${cmt.id}" placeholder="Write a reply..." style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--bg-card2);color:var(--text);font-size:0.83rem;margin-bottom:6px;">
+              <button class="btn btn-primary btn-sm" onclick="postReply('${cmt.id}')">Post Reply</button>
+            </div>
           </div>
         `;
         grid.appendChild(item);
       });
+    }
+
+    async function likeComment(cmtId, btn) {
+      const result = await fsToggleCommentLike(cmtId, reactUserId);
+      if (result) {
+        btn.querySelector('span').textContent = result.likes;
+        if (result.userLiked) { btn.classList.add('liked'); btn.querySelector('i').className = 'fas fa-thumbs-up'; }
+        else { btn.classList.remove('liked'); btn.querySelector('i').className = 'far fa-thumbs-up'; }
+      }
+    }
+
+    function toggleReplyForm(cmtId) {
+      const form = document.getElementById('replyForm_' + cmtId);
+      if (!form) return;
+      const open = form.style.display === 'block';
+      form.style.display = open ? 'none' : 'block';
+      if (!open) { const inp = document.getElementById('replyInput_' + cmtId); if (inp) inp.focus(); }
+    }
+
+    async function postReply(cmtId) {
+      const input = document.getElementById('replyInput_' + cmtId);
+      const text = input ? input.value.trim() : '';
+      if (!text) return;
+      let authorName = user ? (user.name || 'Member') : (localStorage.getItem('mbire_guest_name') || 'Guest');
+      const replyObj = { id: 'rpl_' + Date.now(), authorName, text, date: new Date().toISOString() };
+      try {
+        await fsAddCommentReply(cmtId, replyObj);
+        input.value = '';
+        document.getElementById('replyForm_' + cmtId).style.display = 'none';
+        showToast('Reply posted!', '✅');
+        await reloadComments();
+      } catch(e) { showToast('Failed: ' + e.message, '❌'); }
     }
 
     // Comment Post

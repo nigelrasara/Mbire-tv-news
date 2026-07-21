@@ -134,6 +134,22 @@
         </div>
       </div>
     </section>
+
+    <!-- Most Read / Trending Articles Section -->
+    <section class="section" style="background:var(--bg-card2); padding:40px 0;" id="trendingSection">
+      <div class="container">
+        <div class="section-header">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <i class="fas fa-fire" style="font-size:1.8rem; color:#FF6B35;"></i>
+            <h2 class="section-title" style="margin:0;">Most Read</h2>
+          </div>
+          <a href="news.html" class="view-all">See All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div id="trendingGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(260px,100%), 1fr)); gap:20px;">
+          <!-- Populated dynamically by most views -->
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- Video Player Modal Overlay -->
@@ -242,6 +258,9 @@
 
     // Load home page data
     document.addEventListener('DOMContentLoaded', async () => {
+      // Record page visit
+      if (typeof recordPageVisit === 'function') recordPageVisit();
+
       // 1. Fetch news articles from Firestore
       const articles = await fsGetArticles(6);
       
@@ -326,6 +345,44 @@
       // 3. Check if channel is LIVE NOW — shows red banner if so
       checkChannelLiveState();
       setInterval(checkChannelLiveState, 60000);
+
+      // 4. Load Most Read / Trending Articles (top 8 by views)
+      if (typeof fsGetPopularArticles === 'function') {
+        const trendingGrid = document.getElementById('trendingGrid');
+        if (trendingGrid) {
+          try {
+            const trending = await fsGetPopularArticles(8);
+            if (trending.length === 0) {
+              trendingGrid.innerHTML = '<p class="text-muted" style="grid-column:1/-1;text-align:center;">No articles with views yet. Check back soon!</p>';
+            } else {
+              trendingGrid.innerHTML = '';
+              trending.forEach((art, rank) => {
+                const bodyPreview = art.type === 'pdf' ? '📄 PDF Document — click to open' : (art.body || '').substring(0, 90) + '...';
+                const card = document.createElement('a');
+                card.href = `news-article.html?id=${art.id}`;
+                card.style.cssText = 'display:block; text-decoration:none; background:var(--bg-card); border:1.5px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; transition:border-color 0.2s, transform 0.2s; position:relative;';
+                card.onmouseover = () => { card.style.borderColor = 'var(--red)'; card.style.transform = 'translateY(-3px)'; };
+                card.onmouseout = () => { card.style.borderColor = 'var(--border)'; card.style.transform = 'translateY(0)'; };
+                card.innerHTML = `
+                  <div style="position:relative;">
+                    <img src="${art.image || 'https://placehold.co/400x220/cc0000/ffffff?text=MBIRE+TV'}" alt="${art.title}" style="width:100%;height:160px;object-fit:cover;display:block;">
+                    <div style="position:absolute;top:10px;left:10px;background:#FF6B35;color:#fff;font-family:var(--font-title);font-size:0.75rem;font-weight:700;padding:4px 10px;border-radius:50px;letter-spacing:0.5px;">#${rank+1} Most Read</div>
+                    <div style="position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.7);color:#fff;font-size:0.72rem;padding:3px 8px;border-radius:50px;display:flex;align-items:center;gap:4px;"><i class="far fa-eye"></i> ${(art.views || 0).toLocaleString()} views</div>
+                  </div>
+                  <div style="padding:14px;">
+                    <span style="font-size:0.7rem;font-weight:700;letter-spacing:1px;color:var(--red);text-transform:uppercase;">${art.cat || 'General'}</span>
+                    <h4 style="font-family:var(--font-title);font-size:0.95rem;font-weight:700;margin:6px 0 8px;color:var(--text);line-height:1.3;">${art.title}</h4>
+                    <p style="font-size:0.8rem;color:var(--text-muted);margin:0;line-height:1.4;">${bodyPreview}</p>
+                  </div>
+                `;
+                trendingGrid.appendChild(card);
+              });
+            }
+          } catch(e) {
+            console.warn('Could not load trending articles:', e);
+          }
+        }
+      }
     });
   </script>
   <style>

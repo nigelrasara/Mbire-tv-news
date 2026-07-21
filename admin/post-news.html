@@ -73,10 +73,39 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="artBody">Full Article Content <span style="color:var(--red);">*</span></label>
-              <textarea class="form-textarea" id="artBody" placeholder="Write the full news story here. Use line breaks to separate paragraphs..." style="min-height:320px;" oninput="document.getElementById('bodyCount').textContent=this.value.length+' characters'"></textarea>
-              <div class="char-count" id="bodyCount">0 characters</div>
+              <label class="form-label" for="artType">Article Type</label>
+              <select class="form-select" id="artType">
+                <option value="standard">📝 Standard Article (Text + Images)</option>
+                <option value="pdf">📄 PDF Document (Headline Only)</option>
+              </select>
             </div>
+
+            <!-- Standard Body Section -->
+            <div id="bodySection">
+              <div class="form-group">
+                <label class="form-label" for="artBody">Full Article Content <span style="color:var(--red);">*</span></label>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;background:#f9f9f9;border:1px solid #DDE2EA;border-radius:6px;padding:8px 10px;">
+                  💡 <strong>Tip:</strong> Use <code>[image:URL]</code> tags to embed images inside the article. Click <em>"Insert"</em> on a gallery photo to insert one automatically.
+                </div>
+                <textarea class="form-textarea" id="artBody" placeholder="Write the full news story here. Use line breaks to separate paragraphs..." style="min-height:320px;" oninput="document.getElementById('bodyCount').textContent=this.value.length+' characters'"></textarea>
+                <div class="char-count" id="bodyCount">0 characters</div>
+              </div>
+            </div>
+
+            <!-- PDF Section (hidden by default) -->
+            <div id="pdfSection" style="display:none;">
+              <div class="form-group">
+                <label class="form-label">PDF Document <span style="color:var(--red);">*</span></label>
+                <div style="border:2px dashed var(--border);border-radius:var(--radius-lg);padding:24px;text-align:center;cursor:pointer;background:var(--bg-card2);" onclick="document.getElementById('artPdfFile').click()">
+                  <i class="fas fa-file-pdf" style="font-size:2.5rem;color:#CC0000;display:block;margin-bottom:8px;"></i>
+                  <p style="margin:0;font-size:0.9rem;">Click to browse &amp; upload a PDF file</p>
+                  <input type="file" id="artPdfFile" accept="application/pdf" style="display:none;">
+                </div>
+                <input type="hidden" id="artPdfUrl">
+                <p id="pdfNameLabel" style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;"></p>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -110,8 +139,8 @@
             <div class="form-group">
               <div class="upload-zone" id="uploadZone">
                 <i class="fas fa-cloud-upload-alt upload-zone-icon"></i>
-                <p>Drag & drop photo here or <strong>browse files</strong></p>
-                <input type="file" id="artImageFile" accept="image/*">
+                <p>Drag &amp; drop photos here or <strong>browse files</strong></p>
+                <input type="file" id="artImageFile" accept="image/*" multiple>
               </div>
               <div class="upload-progress" id="uploadProgress">
                 <div class="upload-progress-bar" id="uploadProgressBar"></div>
@@ -120,6 +149,12 @@
             </div>
 
             <img src="" class="upload-preview" id="imgPreview" alt="Cover Preview">
+
+            <!-- Image Gallery (shows after uploads) -->
+            <div id="galleryContainer" style="display:none;margin-top:12px;">
+              <p style="font-size:0.8rem;font-weight:700;color:var(--text-muted);margin-bottom:8px;letter-spacing:0.5px;text-transform:uppercase;">Uploaded Photos</p>
+              <div id="imageGallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;"></div>
+            </div>
           </div>
 
           <div class="admin-card">
@@ -161,72 +196,122 @@
     const previewImg = document.getElementById('imgPreview');
     const urlHidden = document.getElementById('artImageUrl');
 
+    // Multi-image tracking array
+    let uploadedImages = [];
+
     uploadZone.addEventListener('dragover', (e) => {
       e.preventDefault();
       uploadZone.classList.add('drag-over');
     });
-
-    uploadZone.addEventListener('dragleave', () => {
-      uploadZone.classList.remove('drag-over');
-    });
-
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
     uploadZone.addEventListener('drop', (e) => {
       e.preventDefault();
       uploadZone.classList.remove('drag-over');
-      const files = e.dataTransfer.files;
-      if (files.length) handleImageUpload(files[0]);
+      const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+      if (files.length) handleMultiImageUpload(files);
     });
-
     imageInput.addEventListener('change', (e) => {
-      const files = e.target.files;
-      if (files.length) handleImageUpload(files[0]);
+      const files = [...e.target.files].filter(f => f.type.startsWith('image/'));
+      if (files.length) handleMultiImageUpload(files);
     });
 
-    async function handleImageUpload(file) {
-      if (!file.type.startsWith('image/')) {
-        showToast('Please upload an image file.', '⚠️');
-        return;
-      }
-
+    async function handleMultiImageUpload(files) {
       progressDiv.style.display = 'block';
-      progressBar.style.width = '20%';
-
-      try {
-        progressBar.style.width = '60%';
-        const downloadUrl = await fsUploadImage(file);
-        
-        progressBar.style.width = '100%';
-        urlHidden.value = downloadUrl;
-        
-        previewImg.src = downloadUrl;
-        previewImg.style.display = 'block';
-
-        // Show image-ready badge
-        let badge = document.getElementById('imgReadyBadge');
-        if (!badge) {
-          badge = document.createElement('div');
-          badge.id = 'imgReadyBadge';
-          badge.style.cssText = 'margin-top:8px;display:flex;align-items:center;gap:8px;background:#f0fdf4;border:1.5px solid #22c55e;border-radius:8px;padding:8px 12px;font-size:0.82rem;color:#15803d;font-weight:600;';
-          document.getElementById('uploadZone').parentNode.appendChild(badge);
+      progressBar.style.width = '10%';
+      let done = 0;
+      for (const file of files) {
+        try {
+          const url = await fsUploadImage(file);
+          uploadedImages.push({ url, name: file.name });
+          done++;
+          progressBar.style.width = Math.round((done / files.length) * 100) + '%';
+        } catch (err) {
+          showToast('Failed: ' + file.name + ' — ' + (err.message || 'error'), '❌');
         }
-        const shortUrl = downloadUrl.startsWith('data:') ? '[Base64 image — ready]' : downloadUrl.substring(0, 60) + '...';
-        badge.innerHTML = '<i class="fas fa-check-circle" style="color:#22c55e;"></i> Image ready: ' + shortUrl;
-        console.log('✅ Image uploaded. URL saved to form:', downloadUrl);
-        
-        showToast('Photo uploaded! Image is ready to be published.', '📸');
-        setTimeout(() => { progressDiv.style.display = 'none'; }, 800);
-      } catch (err) {
-        console.error(err);
-        showToast(err.message || 'Image upload failed. Try a smaller file.', '❌');
-        progressDiv.style.display = 'none';
       }
+      renderGallery();
+      showToast(done + ' photo(s) uploaded!', '📸');
+      setTimeout(() => { progressDiv.style.display = 'none'; progressBar.style.width = '0%'; }, 800);
     }
 
-    // Edit mode: check URL param
+    function renderGallery() {
+      const gallery = document.getElementById('imageGallery');
+      const container = document.getElementById('galleryContainer');
+      if (!gallery) return;
+      if (uploadedImages.length === 0) { container.style.display = 'none'; return; }
+      container.style.display = 'block';
+      gallery.innerHTML = '';
+      uploadedImages.forEach((img, idx) => {
+        const isCover = urlHidden.value === img.url;
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'position:relative;border-radius:8px;overflow:hidden;border:2px solid ' + (isCover ? '#CC0000' : '#DDE2EA') + ';';
+        wrap.innerHTML = `
+          <img src="${img.url}" style="width:100%;height:80px;object-fit:cover;display:block;" title="${img.name}">
+          ${isCover ? '<div style="position:absolute;top:0;right:0;background:#CC0000;color:#fff;font-size:0.6rem;padding:2px 5px;font-weight:700;">COVER</div>' : ''}
+          <div style="display:flex;gap:2px;padding:4px;background:rgba(0,0,0,0.6);">
+            <button onclick="setCoverImage(${idx})" style="flex:1;background:#CC0000;border:none;color:#fff;border-radius:4px;font-size:0.6rem;cursor:pointer;padding:2px 0;">Cover</button>
+            <button onclick="insertInlineImage(${idx})" style="flex:1;background:#4A6CF7;border:none;color:#fff;border-radius:4px;font-size:0.6rem;cursor:pointer;padding:2px 0;">Insert</button>
+            <button onclick="removeGalleryImage(${idx})" style="background:#6B7280;border:none;color:#fff;border-radius:4px;font-size:0.6rem;cursor:pointer;padding:2px 5px;">✕</button>
+          </div>
+        `;
+        gallery.appendChild(wrap);
+      });
+    }
+
+    window.setCoverImage = function(idx) {
+      const img = uploadedImages[idx]; if (!img) return;
+      urlHidden.value = img.url; previewImg.src = img.url; previewImg.style.display = 'block';
+      renderGallery(); showToast('Cover photo set!', '🖼️');
+    };
+    window.insertInlineImage = function(idx) {
+      const img = uploadedImages[idx]; if (!img) return;
+      const bodyTA = document.getElementById('artBody'); if (!bodyTA) return;
+      const tag = `\n[image:${img.url}]\n`;
+      const s = bodyTA.selectionStart, e = bodyTA.selectionEnd;
+      bodyTA.value = bodyTA.value.substring(0, s) + tag + bodyTA.value.substring(e);
+      bodyTA.selectionStart = bodyTA.selectionEnd = s + tag.length;
+      bodyTA.focus(); showToast('Image tag inserted!', '✅');
+    };
+    window.removeGalleryImage = function(idx) {
+      const removed = uploadedImages.splice(idx, 1)[0];
+      if (urlHidden.value === removed.url) { urlHidden.value = ''; previewImg.src = ''; previewImg.style.display = 'none'; }
+      renderGallery();
+    };
+
+    // Article Type Toggle
+    const artTypeSelect = document.getElementById('artType');
+    const bodySection = document.getElementById('bodySection');
+    const pdfSection = document.getElementById('pdfSection');
+    if (artTypeSelect) {
+      artTypeSelect.addEventListener('change', () => {
+        const isPdf = artTypeSelect.value === 'pdf';
+        bodySection.style.display = isPdf ? 'none' : 'block';
+        pdfSection.style.display = isPdf ? 'block' : 'none';
+      });
+    }
+
+    // PDF Upload
+    const pdfInput = document.getElementById('artPdfFile');
+    if (pdfInput) {
+      pdfInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file || file.type !== 'application/pdf') { showToast('Please select a valid PDF file.', '⚠️'); return; }
+        try {
+          showToast('Uploading PDF...', '📄');
+          const url = await fsUploadImage(file);
+          document.getElementById('artPdfUrl').value = url;
+          document.getElementById('pdfNameLabel').textContent = '✅ PDF ready: ' + file.name;
+          showToast('PDF uploaded!', '✅');
+        } catch(err) { showToast('PDF upload failed: ' + (err.message || 'error'), '❌'); }
+      });
+    }
+
+    // Edit mode
     let editMode = false;
     let editId = null;
 
     async function initPage() {
+      if (typeof recordPageVisit === 'function') recordPageVisit();
       const params = new URLSearchParams(window.location.search);
       editId = params.get('edit');
       const prefillRaw = params.get('prefill');
@@ -240,14 +325,18 @@
         const art = await fsGetArticleById(editId);
         if (art) {
           document.getElementById('artTitle').value = art.title || '';
-          document.getElementById('artBody').value = art.body || '';
+          if (artTypeSelect && art.type === 'pdf') {
+            artTypeSelect.value = 'pdf';
+            artTypeSelect.dispatchEvent(new Event('change'));
+            if (document.getElementById('artPdfUrl')) document.getElementById('artPdfUrl').value = art.pdfUrl || '';
+            if (document.getElementById('pdfNameLabel')) document.getElementById('pdfNameLabel').textContent = art.pdfUrl ? '✅ PDF already uploaded' : 'No PDF set';
+          } else {
+            document.getElementById('artBody').value = art.body || '';
+          }
           document.getElementById('artCat').value = art.cat || 'politics';
           document.getElementById('artAuthor').value = art.author || 'MBIRE TV Desk';
           document.getElementById('artImageUrl').value = art.image || '';
-          if (art.image) {
-            previewImg.src = art.image;
-            previewImg.style.display = 'block';
-          }
+          if (art.image) { previewImg.src = art.image; previewImg.style.display = 'block'; }
           document.getElementById('titleCount').textContent = (art.title || '').length + '/150';
           document.getElementById('bodyCount').textContent = (art.body || '').length + ' characters';
         }
@@ -258,25 +347,28 @@
           document.getElementById('formTitle').textContent = 'Draft Article';
           if (pre.title) { document.getElementById('artTitle').value = pre.title; document.getElementById('titleCount').textContent = pre.title.length + '/150'; }
           if (pre.body) { document.getElementById('artBody').value = pre.body; document.getElementById('bodyCount').textContent = pre.body.length + ' characters'; }
-          if (pre.image) {
-            document.getElementById('artImageUrl').value = pre.image;
-            previewImg.src = pre.image;
-            previewImg.style.display = 'block';
-          }
+          if (pre.image) { document.getElementById('artImageUrl').value = pre.image; previewImg.src = pre.image; previewImg.style.display = 'block'; }
         } catch(e) { console.warn('Could not parse prefill param', e); }
       }
     }
 
     async function publishArticle() {
       const title = document.getElementById('artTitle').value.trim();
-      const body  = document.getElementById('artBody').value.trim();
       const cat   = document.getElementById('artCat').value;
       const author = document.getElementById('artAuthor').value.trim() || 'MBIRE TV Desk';
       const image  = document.getElementById('artImageUrl').value.trim();
+      const type   = artTypeSelect ? artTypeSelect.value : 'standard';
 
-      if (!title || !body) {
-        showToast('Title and article content are required.', '⚠️');
-        return;
+      if (!title) { showToast('Headline is required.', '⚠️'); return; }
+
+      let body = '', pdfUrl = '';
+      if (type === 'pdf') {
+        pdfUrl = document.getElementById('artPdfUrl') ? document.getElementById('artPdfUrl').value.trim() : '';
+        if (!pdfUrl) { showToast('Please upload a PDF document.', '⚠️'); return; }
+        body = '[PDF Document]';
+      } else {
+        body = document.getElementById('artBody').value.trim();
+        if (!body) { showToast('Article content is required.', '⚠️'); return; }
       }
 
       const publishBtn = document.getElementById('publishBtn');
@@ -285,32 +377,24 @@
 
       const artObj = {
         id: editMode ? editId : 'art_' + Date.now(),
-        title,
-        body,
-        cat,
-        author,
-        image: image || ''
+        title, body, cat, author,
+        image: image || '',
+        type: type,
+        pdfUrl: pdfUrl || ''
       };
       if (!editMode) {
         artObj.date = new Date().toISOString();
         artObj.views = 0;
-      }
-
-      // Debug: log what we're saving
-      console.log('📝 Saving article to Firestore:', artObj);
-      console.log('🖼️ Image field value:', image || '(empty - no image)');
-
-      if (!image) {
-        showToast('⚠️ Warning: No image uploaded. Article will save without a cover photo.', '⚠️');
+        artObj.likes = 0;
+        artObj.dislikes = 0;
       }
 
       try {
         await fsSaveArticle(artObj);
-        showToast(editMode ? 'Article updated!' : 'Article published successfully!', '✅');
+        showToast(editMode ? 'Article updated!' : 'Article published!', '✅');
         setTimeout(() => location.href = 'index.html', 1500);
       } catch (err) {
-        console.error(err);
-        showToast('Error saving article: ' + err.message, '❌');
+        showToast('Error: ' + err.message, '❌');
         publishBtn.disabled = false;
         publishBtn.innerHTML = editMode ? '<i class="fas fa-save"></i> Save Changes' : '<i class="fas fa-paper-plane"></i> Publish Article';
       }
@@ -324,8 +408,8 @@
       document.getElementById('artCat').value = 'politics';
       document.getElementById('titleCount').textContent = '0/150';
       document.getElementById('bodyCount').textContent = '0 characters';
-      previewImg.style.display = 'none';
-      previewImg.src = '';
+      previewImg.style.display = 'none'; previewImg.src = '';
+      uploadedImages = []; renderGallery();
     }
 
     function handleAdminLogout() {
