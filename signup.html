@@ -98,14 +98,14 @@
         phone: phone || '',
         password: pass,
         role: 'user',
-        status: 'pending',
+        status: 'active',
         date: new Date().toISOString()
       };
 
       try {
         await fsSaveUser(newUser);
-        showToast('Registration successful! Account is pending admin approval.', '⏳');
-        setTimeout(() => location.href = 'login.html', 3000);
+        showToast('Registration successful! Your account is active. Redirecting...', '✅');
+        setTimeout(() => location.href = 'login.html', 2000);
       } catch (err) {
         console.error(err);
         showToast('Error registering account: ' + err.message, '❌');
@@ -114,14 +114,14 @@
     }
 
     async function handleGoogleSignUp() {
-      showToast('Registering Google Account... Admin approval required.', '🌐');
+      showToast('Registering Google Account... Access approved.', '🌐');
       const googleUser = {
         id: 'usr_g_' + Date.now(),
         name: 'Google User',
         email: 'googleuser@gmail.com',
         phone: '',
         role: 'user',
-        status: 'pending',
+        status: 'active',
         date: new Date().toISOString()
       };
       

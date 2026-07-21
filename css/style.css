@@ -29,7 +29,7 @@
   --radius-lg:    14px;
   --radius-xl:    20px;
   --t:            0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  --max-width:    1200px;
+  --max-width:    100%;
   --shadow:       0 2px 12px rgba(0,0,0,0.07);
   --shadow-md:    0 4px 20px rgba(0,0,0,0.10);
   --shadow-lg:    0 8px 32px rgba(0,0,0,0.14);
@@ -256,9 +256,9 @@ div, article, figure, .container, .card,
 
 /* ─── Layout ─── */
 .container {
-  max-width: var(--max-width);
+  max-width: 100%;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 28px;
 }
 .page-wrapper {
   padding-top: 120px;
@@ -1647,5 +1647,54 @@ html, body {
     font-size: 1.2rem;
     letter-spacing: 4px;
   }
+}
+
+/* Nav Dropdown styling */
+.nav-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.nav-dropdown .dropdown-trigger {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+}
+.nav-dropdown .dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background-color: #fff;
+  min-width: 155px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  z-index: 1000;
+  padding: 6px 0;
+  margin-top: 4px;
+}
+.nav-dropdown .dropdown-menu a {
+  display: block !important;
+  padding: 8px 16px !important;
+  color: var(--text-dim) !important;
+  text-decoration: none !important;
+  font-family: var(--font-title) !important;
+  font-size: 0.8rem !important;
+  text-transform: uppercase !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  text-align: left !important;
+  box-shadow: none !important;
+  transform: none !important;
+  margin: 0 !important;
+}
+.nav-dropdown .dropdown-menu a:hover {
+  background-color: var(--bg-card2) !important;
+  color: var(--red) !important;
+}
+.nav-dropdown:hover .dropdown-menu {
+  display: block;
 }
 

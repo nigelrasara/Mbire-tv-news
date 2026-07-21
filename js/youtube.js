@@ -53,6 +53,9 @@ function renderVideoCard(video) {
   if (!videoId) return null;
 
   const snippet = video.snippet;
+  const stats = video.statistics || {};
+  const viewCount = Number(stats.viewCount || 0).toLocaleString();
+  const likeCount = Number(stats.likeCount || 0).toLocaleString();
   const title = snippet.title || 'Untitled Video';
   const thumb = snippet.thumbnails?.medium?.url || snippet.thumbnails?.high?.url || 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
   const dateStr = snippet.publishedAt ? timeAgo(snippet.publishedAt) : '';
@@ -72,10 +75,12 @@ function renderVideoCard(video) {
       </div>
     </div>
     <div class="card-body">
-      <div class="card-meta">
-        <span class="card-date"><i class="far fa-clock"></i> ${dateStr}</span>
-        <span class="card-dot">●</span>
-        <span>YouTube Feed</span>
+      <div class="card-meta" style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:var(--text-muted); margin-bottom:8px;">
+        <span><i class="far fa-clock"></i> ${dateStr}</span>
+        <div style="display:flex; gap:8px;">
+          <span><i class="far fa-eye"></i> ${viewCount}</span>
+          <span><i class="far fa-thumbs-up"></i> ${likeCount}</span>
+        </div>
       </div>
       <h3 class="card-title">${title}</h3>
     </div>
@@ -94,10 +99,12 @@ function renderVideoRow(video, isNewest = false) {
   if (!videoId) return null;
 
   const snippet = video.snippet;
+  const stats = video.statistics || {};
+  const viewCount = Number(stats.viewCount || 0).toLocaleString();
+  const likeCount = Number(stats.likeCount || 0).toLocaleString();
   const title = snippet.title || 'Untitled Video';
   const thumb = snippet.thumbnails?.medium?.url || snippet.thumbnails?.high?.url || 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
   const dateStr = snippet.publishedAt ? timeAgo(snippet.publishedAt) : '';
-  const cat = guessCategory(title, snippet.description || '');
 
   const row = document.createElement('div');
   row.className = 'video-row';
@@ -113,11 +120,15 @@ function renderVideoRow(video, isNewest = false) {
           ${snippet.description || 'Watch the full video coverage directly from Mbire TV Zimbabwe.'}
         </p>
       </div>
-      <div class="video-row-meta">
-        ${isNewest ? `<span class="video-new-badge"><i class="fas fa-fire"></i> NEWEST</span>` : ''}
-        <span><i class="far fa-clock"></i> ${dateStr}</span>
-        <span class="card-dot">●</span>
-        <span>YouTube Upload</span>
+      <div class="video-row-meta" style="display:flex; justify-content:space-between; align-items:center; width:100%; flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          ${isNewest ? `<span class="video-new-badge"><i class="fas fa-fire"></i> NEWEST</span>` : ''}
+          <span><i class="far fa-clock"></i> ${dateStr}</span>
+        </div>
+        <div style="display:flex; gap:12px; font-size:0.78rem; color:var(--text-muted);">
+          <span><i class="far fa-eye"></i> ${viewCount} views</span>
+          <span><i class="far fa-thumbs-up"></i> ${likeCount} likes</span>
+        </div>
       </div>
     </div>
   `;
@@ -345,6 +356,30 @@ async function fetchYouTubeVideos(targetGridId = 'youtubeGrid', maxResults = YOU
 
     const items = data.items || [];
 
+    // Fetch video statistics (views & likes)
+    const videoIds = items.map(item => item.snippet?.resourceId?.videoId || item.id?.videoId || item.id).filter(Boolean);
+    if (videoIds.length) {
+      try {
+        const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds.join(',')}&key=${YOUTUBE_CONFIG.apiKey}`;
+        const statsRes = await fetch(statsUrl);
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          const statsMap = {};
+          (statsData.items || []).forEach(v => {
+            statsMap[v.id] = v.statistics;
+          });
+          items.forEach(item => {
+            const vId = item.snippet?.resourceId?.videoId || item.id?.videoId || item.id;
+            if (statsMap[vId]) {
+              item.statistics = statsMap[vId];
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('Could not fetch video statistics:', err);
+      }
+    }
+
     // Check if we are on the Home page and want to isolate the newest video as breaking
     const homeBreakingContainer = document.getElementById('breakingVideoContainer');
     if (homeBreakingContainer && targetGridId === 'indexVideosGrid') {
@@ -424,35 +459,14 @@ async function fetchYouTubeVideos(targetGridId = 'youtubeGrid', maxResults = YOU
 // ─── Live Auto-Poll Interval ──────────────────────────────────
 let _livePollingInterval = null;
 
-// ─── Manual Refresh (reset countdown) ────────────────────────
+// ─── Manual Refresh (no countdown reset needed) ──────────────
 function manualRefreshLive() {
   checkChannelLiveState();
-  startLivePolling(); // restart the countdown
 }
 
-// ─── Start 60-second polling loop ─────────────────────────────
-// ─── Start 5-minute polling loop ─────────────────────────────
+// ─── Start Polling (No-op since autocheck is removed) ──────────
 function startLivePolling() {
-  if (_livePollingInterval) clearInterval(_livePollingInterval);
-  let remaining = 300; // 5 minutes
-  const countdownEl = document.getElementById('refreshCountdown');
-
-  const tick = () => {
-    remaining--;
-    if (countdownEl) {
-      const mins = Math.floor(remaining / 60);
-      const secs = remaining % 60;
-      const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-      countdownEl.textContent = `Auto-check in ${timeStr}`;
-    }
-    if (remaining <= 0) {
-      remaining = 300;
-      checkChannelLiveState();
-    }
-  };
-
-  if (countdownEl) countdownEl.textContent = 'Auto-check in 5m';
-  _livePollingInterval = setInterval(tick, 1000);
+  // Auto-polling disabled as per request
 }
 
 // ─── Inject or remove live banner on homepage ─────────────────
@@ -762,7 +776,8 @@ async function checkChannelLiveState() {
 
   } catch (err) {
     console.error('Error checking live state:', err);
-    showOffline('Could not connect to YouTube. Please check your internet connection and try again.');
+    // Do not call showOffline() on error to prevent live banner/player from disappearing
+    // during temporary errors or YouTube API rate limits.
   }
 }
 
@@ -803,3 +818,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// ─── Fetch YouTube Uploads Data only (No Rendering) ──────────
+async function fsGetYouTubeVideosData(maxResults = 10) {
+  if (!isYouTubeApiKeyConfigured()) {
+    return [];
+  }
+  try {
+    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${YOUTUBE_FALLBACK.uploadsPlaylistId}&maxResults=${maxResults}&key=${YOUTUBE_CONFIG.apiKey}`;
+    const response = await fetch(url);
+    if (!response.ok) return [];
+    const data = await response.json();
+    const items = data.items || [];
+    if (!items.length) return [];
+
+    const videoIds = items.map(item => item.snippet?.resourceId?.videoId || item.id?.videoId || item.id).filter(Boolean);
+    if (videoIds.length) {
+      try {
+        const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds.join(',')}&key=${YOUTUBE_CONFIG.apiKey}`;
+        const statsRes = await fetch(statsUrl);
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          const statsMap = {};
+          (statsData.items || []).forEach(v => {
+            statsMap[v.id] = v.statistics;
+          });
+          items.forEach(item => {
+            const vId = item.snippet?.resourceId?.videoId || item.id?.videoId || item.id;
+            if (statsMap[vId]) {
+              item.statistics = statsMap[vId];
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('Could not fetch video statistics:', err);
+      }
+    }
+
+    return items;
+  } catch (e) {
+    console.warn('Error fetching youtube videos data:', e);
+    return [];
+  }
+}
+window.fsGetYouTubeVideosData = fsGetYouTubeVideosData;

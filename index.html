@@ -50,6 +50,13 @@
       <li><a href="videos.html">Videos</a></li>
       <li><a href="live.html" class="live-link"><span class="live-dot"></span>Live Broadcast</a></li>
       <li><a href="submit-news.html">Submit News</a></li>
+          <li class="nav-dropdown">
+        <span class="dropdown-trigger"><i class="fas fa-ellipsis-v"></i></span>
+        <div class="dropdown-menu">
+          <a href="about.html">About Us</a>
+          <a href="contact.html">Contact Us</a>
+        </div>
+      </li>
     </ul>
     <div class="nav-actions">
       <a href="login.html" class="btn-login" id="navLoginBtn">Login</a>
@@ -63,6 +70,8 @@
     <a href="videos.html">Videos</a>
     <a href="live.html">Live Broadcast</a>
     <a href="submit-news.html">Submit News</a>
+        <a href="about.html">About Us</a>
+    <a href="contact.html">Contact Us</a>
     <a href="login.html" id="mobLoginBtn">Login</a>
   </div>
 
@@ -72,81 +81,24 @@
 
     <!-- Live Now Banner (appears only when channel is broadcasting) -->
     <section class="section" style="padding-top:15px;padding-bottom:0;">
-      <div class="container">
+      <div class="container" style="max-width:100%; padding:0 24px;">
         <div id="homeLiveBanner" style="display:none;"></div>
       </div>
     </section>
 
-    <!-- Breaking Video Section -->
-    <section class="section" style="padding-top:15px; padding-bottom:15px;">
-      <div class="container">
-        <div id="breakingVideoContainer">
-          <!-- Loaded dynamically (index 0 of YouTube videos feed) -->
-        </div>
-      </div>
-    </section>
-
-    <!-- Featured Hero Article Section -->
-    <section class="section" style="padding-top:10px; padding-bottom:30px;">
-      <div class="container">
+    <!-- Featured Stories & Broadcasts Mixed Section -->
+    <section class="section" style="padding-top:20px; padding-bottom:40px;">
+      <div class="container" style="max-width:100%; padding:0 24px;">
         <div class="section-header">
-          <h2 class="section-title">Featured Story</h2>
-        </div>
-        <div id="heroContainer">
-          <div style="text-align:center;padding:48px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:var(--radius-lg);">
-            <i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--red);margin-bottom:12px;"></i>
-            <p class="text-muted">Loading latest featured news story...</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Latest Articles Row Grid -->
-    <section class="section" style="background:var(--bg-card2); padding:40px 0;">
-      <div class="container">
-        <div class="section-header">
-          <h2 class="section-title">Written Articles</h2>
-          <a href="news.html" class="view-all">See All Articles <i class="fas fa-arrow-right"></i></a>
-        </div>
-        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(220px,100%), 1fr)); gap:24px;" id="articlesGrid">
-          <!-- Populated dynamically -->
-        </div>
-      </div>
-    </section>
-
-    <!-- YouTube Videos Uploads Grid (Real-time Feed) -->
-    <section class="section" style="padding:40px 0;">
-      <div class="container">
-        <div class="section-header">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <i class="fab fa-youtube" style="font-size:2rem;color:var(--red);"></i>
-            <h2 class="section-title" style="margin:0;">Recent Broadcasts</h2>
-          </div>
-          <a href="videos.html" class="view-all">All Videos <i class="fas fa-arrow-right"></i></a>
+          <h2 class="section-title">Featured Stories</h2>
+          <a href="news.html" class="view-all">See All News <i class="fas fa-arrow-right"></i></a>
         </div>
         
-        <div id="videosLoader" style="display:flex;justify-content:center;padding:32px;display:none;">
-          <i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--red);"></i>
-        </div>
-
-        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(220px,100%), 1fr)); gap:24px;" id="indexVideosGrid">
-          <!-- Loaded directly from YouTube channel uploads -->
-        </div>
-      </div>
-    </section>
-
-    <!-- Most Read / Trending Articles Section -->
-    <section class="section" style="background:var(--bg-card2); padding:40px 0;" id="trendingSection">
-      <div class="container">
-        <div class="section-header">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <i class="fas fa-fire" style="font-size:1.8rem; color:#FF6B35;"></i>
-            <h2 class="section-title" style="margin:0;">Most Read</h2>
+        <div id="mixedFeedGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(210px,100%), 1fr)); gap:14px;">
+          <div style="grid-column:1/-1; text-align:center; padding:48px;">
+            <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--red); margin-bottom:12px;"></i>
+            <p class="text-muted">Loading latest stories & broadcasts...</p>
           </div>
-          <a href="news.html" class="view-all">See All <i class="fas fa-arrow-right"></i></a>
-        </div>
-        <div id="trendingGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(260px,100%), 1fr)); gap:20px;">
-          <!-- Populated dynamically by most views -->
         </div>
       </div>
     </section>
@@ -261,126 +213,143 @@
       // Record page visit
       if (typeof recordPageVisit === 'function') recordPageVisit();
 
-      // 1. Fetch news articles from Firestore
-      const articles = await fsGetArticles(6);
-      
-      // Update breaking headlines ticker
+      // 1. Fetch news articles from Firestore (10 items)
+      const articles = await fsGetArticles(10);
+
+      // Populate breaking headlines ticker (first 5 articles)
       const tickerTrack = document.getElementById('tickerTrack');
-      articles.forEach(art => {
-        const span = document.createElement('span');
-        span.className = 'ticker-item';
-        span.innerHTML = `${art.title} <span class="ticker-separator">●</span>`;
-        tickerTrack.appendChild(span);
-      });
-
-      // Populate hero (article index 0)
-      const heroContainer = document.getElementById('heroContainer');
-      if (articles.length > 0) {
-        const feat = articles[0];
-        const excerpt = feat.body.substring(0, 140) + '...';
-        heroContainer.innerHTML = `
-          <div class="card featured-story-card" style="border-color:var(--border); cursor:pointer;" id="featuredStoryCard" onclick="location.href='news-article.html?id=${feat.id}'">
-            <div class="card-img-wrap">
-              <img src="${feat.image || 'https://placehold.co/600x400/cc0000/ffffff?text=MBIRE+TV'}" alt="${feat.title}">
-              <span class="card-category" style="background:var(--green);">${feat.cat}</span>
-            </div>
-            <div class="card-body">
-              <div class="card-meta">
-                <span class="card-date"><i class="far fa-clock"></i> ${timeAgo(feat.date)}</span>
-                <span class="card-dot">●</span>
-                <span>By ${feat.author || 'MBIRE TV'}</span>
-              </div>
-              <h3 class="card-title">${feat.title}</h3>
-              <p class="card-excerpt">${excerpt}</p>
-              <div class="featured-story-btn-wrap">
-                <a href="news-article.html?id=${feat.id}" class="btn btn-primary btn-sm">Read Article <i class="fas fa-arrow-right"></i></a>
-              </div>
-            </div>
-          </div>
-        `;
-        
-
-      } else {
-        heroContainer.innerHTML = `
-          <div style="text-align:center;padding:48px;background:var(--bg-card);border:1.5px solid var(--border);border-radius:var(--radius-lg);">
-            <p class="text-muted">No news articles published yet.</p>
-          </div>
-        `;
+      if (tickerTrack) {
+        articles.slice(0, 5).forEach(art => {
+          const span = document.createElement('span');
+          span.className = 'ticker-item';
+          span.innerHTML = `${art.title} <span class="ticker-separator">●</span>`;
+          tickerTrack.appendChild(span);
+        });
       }
 
-      // Populate latest grid list (articles 1 to 4)
-      const grid = document.getElementById('articlesGrid');
-      if (grid) {
-        grid.innerHTML = '';
-        const listItems = articles.slice(1, 4);
-        if (listItems.length === 0) {
-          grid.innerHTML = '<p class="text-muted" style="grid-column:1/-1;text-align:center;">No recent articles.</p>';
-        } else {
-          listItems.forEach(art => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.style.cursor = 'pointer';
-            card.onclick = () => location.href = `news-article.html?id=${art.id}`;
-            card.innerHTML = `
-              <div class="card-img-wrap">
-                <img src="${art.image || 'https://placehold.co/600x400/cc0000/ffffff?text=MBIRE+TV'}" alt="${art.title}">
-                <span class="card-category" style="background:var(--green);">${art.cat}</span>
-              </div>
-              <div class="card-body">
-                <div class="card-meta">
-                  <span class="card-date"><i class="far fa-clock"></i> ${timeAgo(art.date)}</span>
-                </div>
-                <h3 class="card-title">${art.title}</h3>
-                <p class="card-excerpt">${art.body.substring(0, 100)}...</p>
-              </div>
-            `;
-            grid.appendChild(card);
-          });
-        }
+      // Fetch YouTube uploads (10 items to allow backfilling if articles are < 10)
+      let videos = [];
+      if (typeof fsGetYouTubeVideosData === 'function') {
+        videos = await fsGetYouTubeVideosData(10);
       }
 
-      // 2. Fetch YouTube Feed in real-time
-      fetchYouTubeVideos('indexVideosGrid', 4);
-
-      // 3. Check if channel is LIVE NOW — shows red banner if so
+      // 2. Check if channel is LIVE NOW — shows red banner if so
       checkChannelLiveState();
       setInterval(checkChannelLiveState, 60000);
 
-      // 4. Load Most Read / Trending Articles (top 8 by views)
-      if (typeof fsGetPopularArticles === 'function') {
-        const trendingGrid = document.getElementById('trendingGrid');
-        if (trendingGrid) {
-          try {
-            const trending = await fsGetPopularArticles(8);
-            if (trending.length === 0) {
-              trendingGrid.innerHTML = '<p class="text-muted" style="grid-column:1/-1;text-align:center;">No articles with views yet. Check back soon!</p>';
-            } else {
-              trendingGrid.innerHTML = '';
-              trending.forEach((art, rank) => {
-                const bodyPreview = art.type === 'pdf' ? '📄 PDF Document — click to open' : (art.body || '').substring(0, 90) + '...';
-                const card = document.createElement('a');
-                card.href = `news-article.html?id=${art.id}`;
-                card.style.cssText = 'display:block; text-decoration:none; background:var(--bg-card); border:1.5px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; transition:border-color 0.2s, transform 0.2s; position:relative;';
-                card.onmouseover = () => { card.style.borderColor = 'var(--red)'; card.style.transform = 'translateY(-3px)'; };
-                card.onmouseout = () => { card.style.borderColor = 'var(--border)'; card.style.transform = 'translateY(0)'; };
-                card.innerHTML = `
-                  <div style="position:relative;">
-                    <img src="${art.image || 'https://placehold.co/400x220/cc0000/ffffff?text=MBIRE+TV'}" alt="${art.title}" style="width:100%;height:160px;object-fit:cover;display:block;">
-                    <div style="position:absolute;top:10px;left:10px;background:#FF6B35;color:#fff;font-family:var(--font-title);font-size:0.75rem;font-weight:700;padding:4px 10px;border-radius:50px;letter-spacing:0.5px;">#${rank+1} Most Read</div>
-                    <div style="position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.7);color:#fff;font-size:0.72rem;padding:3px 8px;border-radius:50px;display:flex;align-items:center;gap:4px;"><i class="far fa-eye"></i> ${(art.views || 0).toLocaleString()} views</div>
-                  </div>
-                  <div style="padding:14px;">
-                    <span style="font-size:0.7rem;font-weight:700;letter-spacing:1px;color:var(--red);text-transform:uppercase;">${art.cat || 'General'}</span>
-                    <h4 style="font-family:var(--font-title);font-size:0.95rem;font-weight:700;margin:6px 0 8px;color:var(--text);line-height:1.3;">${art.title}</h4>
-                    <p style="font-size:0.8rem;color:var(--text-muted);margin:0;line-height:1.4;">${bodyPreview}</p>
-                  </div>
-                `;
-                trendingGrid.appendChild(card);
-              });
+      // 3. Mix articles and videos (Target: 10 articles, 3 videos; backfill with videos if articles are missing)
+      const mixedGrid = document.getElementById('mixedFeedGrid');
+      if (mixedGrid) {
+        mixedGrid.innerHTML = '';
+        
+        let artIdx = 0;
+        let vidIdx = 0;
+        const mixedItems = [];
+        
+        // Slot blueprint for 13 items (~10 articles, 3 videos)
+        const slotTypes = [
+          'video',                                 // Slot 0 (Newest broadcast)
+          'article', 'article', 'article',         // Slots 1..3
+          'video',                                 // Slot 4
+          'article', 'article', 'article',         // Slots 5..7
+          'video',                                 // Slot 8
+          'article', 'article', 'article', 'article'// Slots 9..12
+        ];
+
+        for (let s = 0; s < slotTypes.length; s++) {
+          const preferredType = slotTypes[s];
+          if (preferredType === 'article') {
+            if (artIdx < articles.length) {
+              mixedItems.push({ type: 'article', data: articles[artIdx++] });
+            } else if (vidIdx < videos.length) {
+              // Backfill with video when articles run out
+              mixedItems.push({ type: 'video', isNewest: (vidIdx === 0), data: videos[vidIdx++] });
             }
-          } catch(e) {
-            console.warn('Could not load trending articles:', e);
+          } else {
+            if (vidIdx < videos.length) {
+              mixedItems.push({ type: 'video', isNewest: (vidIdx === 0), data: videos[vidIdx++] });
+            } else if (artIdx < articles.length) {
+              // Backfill with article if videos run out
+              mixedItems.push({ type: 'article', data: articles[artIdx++] });
+            }
           }
+        }
+
+        // Append any remaining items if total items exceeded 13
+        while (artIdx < articles.length || vidIdx < videos.length) {
+          if (artIdx < articles.length) {
+            mixedItems.push({ type: 'article', data: articles[artIdx++] });
+          } else if (vidIdx < videos.length) {
+            mixedItems.push({ type: 'video', isNewest: (vidIdx === 0), data: videos[vidIdx++] });
+          }
+        }
+
+        if (mixedItems.length === 0) {
+          mixedGrid.innerHTML = '<p class="text-muted" style="grid-column:1/-1;text-align:center;padding:48px;">No featured stories or broadcasts available.</p>';
+        } else {
+          mixedItems.forEach(item => {
+            if (item.type === 'article') {
+              const art = item.data;
+              const isPdf = art.type === 'pdf';
+              const bodyPreview = isPdf ? '📄 PDF Document — click to open' : (art.body || '').substring(0, 90) + '...';
+              
+              const card = document.createElement('div');
+              card.className = 'card';
+              card.style.cursor = 'pointer';
+              card.onclick = () => location.href = `news-article.html?id=${art.id}`;
+              card.innerHTML = `
+                <div class="card-img-wrap" style="aspect-ratio:16/9;">
+                  <img src="${art.image || 'https://placehold.co/600x400/cc0000/ffffff?text=MBIRE+TV'}" alt="${art.title}" loading="lazy">
+                  <span class="card-category" style="background:${isPdf ? '#CC0000' : 'var(--green)'}; font-size:0.6rem; padding:1px 6px;">${isPdf ? 'PDF' : (art.cat || 'General')}</span>
+                </div>
+                <div class="card-body" style="padding:10px 12px 12px;">
+                  <div class="card-meta" style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">
+                    <span><i class="far fa-clock"></i> ${timeAgo(art.date)}</span>
+                    <div style="display:flex; gap:6px;">
+                      <span><i class="far fa-eye"></i> ${(art.views || 0).toLocaleString()}</span>
+                      <span><i class="far fa-thumbs-up"></i> ${(art.likes || 0).toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <h3 class="card-title" style="font-size:0.85rem; font-weight:700; margin:0 0 4px 0; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${art.title}</h3>
+                  <p class="card-excerpt" style="font-size:0.75rem; color:var(--text-dim); line-height:1.3; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${bodyPreview}</p>
+                </div>
+              `;
+              mixedGrid.appendChild(card);
+            } else {
+              const video = item.data;
+              const videoId = video.snippet?.resourceId?.videoId || video.id?.videoId || video.id;
+              const snippet = video.snippet || {};
+              const stats = video.statistics || {};
+              const viewCount = Number(stats.viewCount || 0).toLocaleString();
+              const likeCount = Number(stats.likeCount || 0).toLocaleString();
+              const thumb = snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || 'https://img.youtube.com/vi/' + videoId + '/maxresdefault.jpg';
+              const titleEscaped = (snippet.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+              
+              const card = document.createElement('div');
+              card.className = 'card';
+              card.style.cursor = 'pointer';
+              card.onclick = () => openVideoModal(videoId, titleEscaped);
+              card.innerHTML = `
+                <div class="card-img-wrap" style="position:relative; aspect-ratio:16/9;">
+                  <img src="${thumb}" alt="${snippet.title}" loading="lazy">
+                  <span class="card-category" style="background:var(--red); font-size: 0.6rem; padding:1px 6px; letter-spacing: 0.5px;">${item.isNewest ? '<i class="fas fa-bullhorn"></i> NEWEST' : '<i class="fab fa-youtube"></i> VIDEO'}</span>
+                  <div class="video-row-play" style="opacity:1; display:flex; align-items:center; justify-content:center; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:36px; height:36px; border-radius:50%; background:var(--red); color:#fff; font-size:0.9rem;"><i class="fas fa-play"></i></div>
+                </div>
+                <div class="card-body" style="padding:10px 12px 12px;">
+                  <div class="card-meta" style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">
+                    <span><i class="far fa-clock"></i> ${timeAgo(snippet.publishedAt)}</span>
+                    <div style="display:flex; gap:6px;">
+                      <span><i class="far fa-eye"></i> ${viewCount}</span>
+                      <span><i class="far fa-thumbs-up"></i> ${likeCount}</span>
+                    </div>
+                  </div>
+                  <h3 class="card-title" style="font-size:0.85rem; font-weight:700; margin:0 0 4px 0; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${snippet.title}</h3>
+                  <p class="card-excerpt" style="font-size:0.75rem; color:var(--text-muted); line-height:1.3; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${snippet.description || 'Watch broadcast video.'}</p>
+                </div>
+              `;
+              mixedGrid.appendChild(card);
+            }
+          });
         }
       }
     });

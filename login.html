@@ -117,9 +117,10 @@
         }
 
         if (userFound.status === 'pending') {
-          showToast('Your account is pending approval by the admin.', '⏳');
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login'; }
-          return;
+          userFound.status = 'active';
+          if (typeof fsUpdateUserStatus === 'function') {
+            await fsUpdateUserStatus(userFound.id, 'active');
+          }
         }
 
         if (userFound.status === 'banned') {
@@ -154,8 +155,10 @@
         const userFound = usersList.find(u => u.email === 'googleuser@gmail.com');
         if (userFound) {
           if (userFound.status === 'pending') {
-            showToast('Google account is pending approval.', '⏳');
-            return;
+            userFound.status = 'active';
+            if (typeof fsUpdateUserStatus === 'function') {
+              await fsUpdateUserStatus(userFound.id, 'active');
+            }
           }
           if (userFound.status === 'banned') {
             showToast('Google account is banned.', '🚫');

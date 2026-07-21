@@ -49,6 +49,13 @@
       <li><a href="videos.html">Videos</a></li>
       <li><a href="live.html" class="live-link"><span class="live-dot"></span>Live Broadcast</a></li>
       <li><a href="submit-news.html" class="active">Submit News</a></li>
+          <li class="nav-dropdown">
+        <span class="dropdown-trigger"><i class="fas fa-ellipsis-v"></i></span>
+        <div class="dropdown-menu">
+          <a href="about.html">About Us</a>
+          <a href="contact.html">Contact Us</a>
+        </div>
+      </li>
     </ul>
     <div class="nav-actions">
       <a href="login.html" class="btn-login" id="navLoginBtn">Login</a>
@@ -62,6 +69,8 @@
     <a href="videos.html">Videos</a>
     <a href="live.html">Live Broadcast</a>
     <a href="submit-news.html" class="active">Submit News</a>
+        <a href="about.html">About Us</a>
+    <a href="contact.html">Contact Us</a>
     <a href="login.html" id="mobLoginBtn">Login</a>
   </div>
 
@@ -93,17 +102,16 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Attach Photo (Optional)</label>
+            <label class="form-label">Attach Photos (Optional, up to 5)</label>
             <div class="upload-zone" id="uploadZone">
               <i class="fas fa-cloud-upload-alt upload-zone-icon"></i>
-              <p>Drag & drop photo here or <strong>browse files</strong></p>
-              <input type="file" id="subImageFile" accept="image/*">
+              <p>Drag & drop photos here or <strong>browse files</strong></p>
+              <input type="file" id="subImageFile" accept="image/*" multiple>
             </div>
             <div class="upload-progress" id="uploadProgress">
               <div class="upload-progress-bar" id="uploadProgressBar"></div>
             </div>
-            <input type="hidden" id="subImageUrl">
-            <img src="" class="upload-preview" id="imgPreview" alt="Upload Preview">
+            <div id="photoThumbnails" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;"></div>
           </div>
 
           <div class="form-group">
@@ -210,8 +218,9 @@
     const fileInput = document.getElementById('subImageFile');
     const progressBar = document.getElementById('uploadProgressBar');
     const progressDiv = document.getElementById('uploadProgress');
-    const previewImg = document.getElementById('imgPreview');
-    const urlHidden = document.getElementById('subImageUrl');
+    const thumbnailsDiv = document.getElementById('photoThumbnails');
+    let uploadedImageUrls = [];
+    const MAX_PHOTOS = 5;
 
     uploadZone.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -225,42 +234,59 @@
     uploadZone.addEventListener('drop', (e) => {
       e.preventDefault();
       uploadZone.classList.remove('drag-over');
-      const files = e.dataTransfer.files;
-      if (files.length) handleImageUpload(files[0]);
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+      handleMultiImageUpload(files);
     });
 
     fileInput.addEventListener('change', (e) => {
-      const files = e.target.files;
-      if (files.length) handleImageUpload(files[0]);
+      const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+      handleMultiImageUpload(files);
+      fileInput.value = ''; // allow re-selecting same files
     });
 
-    async function handleImageUpload(file) {
-      if (!file.type.startsWith('image/')) {
-        showToast('Please upload an image file.', '⚠️');
+    async function handleMultiImageUpload(files) {
+      if (!files.length) return;
+      const remaining = MAX_PHOTOS - uploadedImageUrls.length;
+      if (remaining <= 0) {
+        showToast(`Maximum ${MAX_PHOTOS} photos allowed.`, '⚠️');
         return;
       }
-
+      const batch = files.slice(0, remaining);
       progressDiv.style.display = 'block';
-      progressBar.style.width = '30%';
+      progressBar.style.width = '10%';
 
-      try {
-        progressBar.style.width = '70%';
-        const downloadUrl = await fsUploadImage(file);
-        
-        progressBar.style.width = '100%';
-        urlHidden.value = downloadUrl;
-        
-        previewImg.src = downloadUrl;
-        previewImg.style.display = 'block';
-        
-        showToast('Image uploaded successfully!', '📸');
-        setTimeout(() => { progressDiv.style.display = 'none'; }, 800);
-      } catch (err) {
-        console.error(err);
-        showToast(err.message || 'Image upload failed. Try a smaller file.', '❌');
-        progressDiv.style.display = 'none';
+      for (let i = 0; i < batch.length; i++) {
+        try {
+          progressBar.style.width = `${((i + 0.5) / batch.length) * 100}%`;
+          const downloadUrl = await fsUploadImage(batch[i]);
+          uploadedImageUrls.push(downloadUrl);
+          renderThumbnail(downloadUrl, uploadedImageUrls.length - 1);
+          progressBar.style.width = `${((i + 1) / batch.length) * 100}%`;
+        } catch (err) {
+          console.error(err);
+          showToast(`Failed to upload ${batch[i].name}: ${err.message}`, '❌');
+        }
       }
+      showToast(`${batch.length} photo(s) uploaded!`, '📸');
+      setTimeout(() => { progressDiv.style.display = 'none'; }, 800);
     }
+
+    function renderThumbnail(url, idx) {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative; width:80px; height:80px; border-radius:8px; overflow:hidden; border:1.5px solid var(--border);';
+      wrap.id = 'thumb_' + idx;
+      wrap.innerHTML = `
+        <img src="${url}" style="width:100%;height:100%;object-fit:cover;">
+        <button type="button" onclick="removeUploadedPhoto(${idx})" style="position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.7);color:#fff;border:none;cursor:pointer;font-size:0.7rem;display:flex;align-items:center;justify-content:center;"><i class="fas fa-times"></i></button>
+      `;
+      thumbnailsDiv.appendChild(wrap);
+    }
+
+    window.removeUploadedPhoto = function(idx) {
+      uploadedImageUrls.splice(idx, 1);
+      thumbnailsDiv.innerHTML = '';
+      uploadedImageUrls.forEach((u, i) => renderThumbnail(u, i));
+    };
 
     // Form Submission
     async function handleUserSubmission(e) {
@@ -272,7 +298,6 @@
       const name = document.getElementById('subName').value.trim();
       const email = document.getElementById('subEmail').value.trim();
       const title = document.getElementById('subTitle').value.trim();
-      const image = document.getElementById('subImageUrl').value.trim();
       const content = document.getElementById('subContent').value.trim();
 
       const subObj = {
@@ -280,7 +305,8 @@
         name,
         email,
         title,
-        image: image || '',
+        image: uploadedImageUrls.length > 0 ? uploadedImageUrls[0] : '',
+        images: uploadedImageUrls.slice(),
         content,
         date: new Date().toISOString()
       };
@@ -291,9 +317,8 @@
         
         // Reset Form
         document.getElementById('submitNewsForm').reset();
-        previewImg.style.display = 'none';
-        previewImg.src = '';
-        urlHidden.value = '';
+        uploadedImageUrls = [];
+        thumbnailsDiv.innerHTML = '';
         
         if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit News Tip'; }
       } catch (err) {

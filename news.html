@@ -78,6 +78,13 @@
       <li><a href="videos.html">Videos</a></li>
       <li><a href="live.html" class="live-link"><span class="live-dot"></span>Live Broadcast</a></li>
       <li><a href="submit-news.html">Submit News</a></li>
+          <li class="nav-dropdown">
+        <span class="dropdown-trigger"><i class="fas fa-ellipsis-v"></i></span>
+        <div class="dropdown-menu">
+          <a href="about.html">About Us</a>
+          <a href="contact.html">Contact Us</a>
+        </div>
+      </li>
     </ul>
     <div class="nav-actions">
       <a href="login.html" class="btn-login" id="navLoginBtn">Login</a>
@@ -91,6 +98,8 @@
     <a href="videos.html">Videos</a>
     <a href="live.html">Live Broadcast</a>
     <a href="submit-news.html">Submit News</a>
+        <a href="about.html">About Us</a>
+    <a href="contact.html">Contact Us</a>
     <a href="login.html" id="mobLoginBtn">Login</a>
   </div>
 
@@ -248,8 +257,12 @@
             <span class="card-category" style="background:${isPdf ? '#CC0000' : 'var(--green)'};">${isPdf ? 'PDF' : art.cat}</span>
           </div>
           <div class="card-body">
-            <div class="card-meta">
-              <span class="card-date"><i class="far fa-clock"></i> ${timeAgo(art.date)}</span>
+            <div class="card-meta" style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:var(--text-muted); margin-bottom:8px;">
+              <span><i class="far fa-clock"></i> ${timeAgo(art.date)}</span>
+              <div style="display:flex; gap:8px;">
+                <span><i class="far fa-eye"></i> ${(art.views || 0).toLocaleString()}</span>
+                <span><i class="far fa-thumbs-up"></i> ${(art.likes || 0).toLocaleString()}</span>
+              </div>
             </div>
             <h3 class="card-title">${art.title}</h3>
             <p class="card-excerpt">${bodyPreview}</p>

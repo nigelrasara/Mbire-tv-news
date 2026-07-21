@@ -145,7 +145,11 @@
             </button>
           </div>
 
-          ${sub.image ? `<img src="${sub.image}" alt="Submission image" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--radius);margin-bottom:12px;">` : ''}
+          ${(() => {
+            const imgs = sub.images && sub.images.length ? sub.images : (sub.image ? [sub.image] : []);
+            if (!imgs.length) return '';
+            return '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">' + imgs.map(u => `<img src="${u}" alt="Photo" style="width:${imgs.length === 1 ? '100%' : '80px'};height:${imgs.length === 1 ? 'auto' : '80px'};aspect-ratio:${imgs.length === 1 ? '16/9' : 'auto'};object-fit:cover;border-radius:var(--radius);border:1.5px solid var(--border);">`).join('') + '</div>';
+          })()}
 
           <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:16px;">${sub.content || ''}</p>
 
@@ -176,7 +180,11 @@
           <span><i class="fas fa-user"></i> ${sub.name}</span>
           <span><i class="fas fa-envelope"></i> ${sub.email || '—'}</span>
         </div>
-        ${sub.image ? `<img src="${sub.image}" alt="Image" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--radius);margin-bottom:16px;">` : ''}
+        ${(() => {
+          const imgs = sub.images && sub.images.length ? sub.images : (sub.image ? [sub.image] : []);
+          if (!imgs.length) return '';
+          return '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">' + imgs.map(u => `<img src="${u}" alt="Photo" style="max-width:100%;border-radius:var(--radius);border:1.5px solid var(--border);cursor:pointer;" onclick="window.open('${u}','_blank')">`).join('') + '</div>';
+        })()}
         <p style="font-size:0.9rem;line-height:1.8;color:var(--text-dim);">${(sub.content||'').replace(/\n/g,'<br>')}</p>
       `;
       document.getElementById('readModal').classList.add('open');
@@ -189,7 +197,8 @@
     function useAsArticle(id) {
       const sub = submissions.find(s => s.id === id);
       if (!sub) return;
-      const url = `post-news.html?prefill=${encodeURIComponent(JSON.stringify({ title: sub.title, body: sub.content, image: sub.image }))}`;
+      const firstImage = sub.images && sub.images.length ? sub.images[0] : (sub.image || '');
+      const url = `post-news.html?prefill=${encodeURIComponent(JSON.stringify({ title: sub.title, body: sub.content, image: firstImage }))}`;
       location.href = url;
     }
 

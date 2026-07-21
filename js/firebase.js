@@ -166,6 +166,14 @@ async function incrementArticleViews(articleId) {
     await db.collection('articles').doc(articleId).update({
       views: firebase.firestore.FieldValue.increment(1)
     });
+    try {
+      const all = JSON.parse(localStorage.getItem('mbire_articles') || '[]');
+      const idx = all.findIndex(a => a.id === articleId);
+      if (idx > -1) {
+        all[idx].views = (all[idx].views || 0) + 1;
+        localStorage.setItem('mbire_articles', JSON.stringify(all));
+      }
+    } catch (err) {}
   } catch(e) { /* silent */ }
 }
 
@@ -178,13 +186,28 @@ async function fsToggleCommentLike(commentId, userId) {
     const data = doc.data();
     const likedBy = data.likedBy || [];
     const hasLiked = likedBy.includes(userId);
+    let newLikes = data.likes || 0;
+    let newLikedBy = [...likedBy];
     if (hasLiked) {
       await docRef.update({ likes: firebase.firestore.FieldValue.increment(-1), likedBy: firebase.firestore.FieldValue.arrayRemove(userId) });
-      return { likes: (data.likes || 1) - 1, userLiked: false };
+      newLikes = Math.max(0, newLikes - 1);
+      newLikedBy = newLikedBy.filter(id => id !== userId);
     } else {
       await docRef.update({ likes: firebase.firestore.FieldValue.increment(1), likedBy: firebase.firestore.FieldValue.arrayUnion(userId) });
-      return { likes: (data.likes || 0) + 1, userLiked: true };
+      newLikes++;
+      newLikedBy.push(userId);
     }
+    // Update local cache
+    try {
+      const all = JSON.parse(localStorage.getItem('mbire_comments') || '[]');
+      const idx = all.findIndex(c => c.id === commentId);
+      if (idx > -1) {
+        all[idx].likes = newLikes;
+        all[idx].likedBy = newLikedBy;
+        localStorage.setItem('mbire_comments', JSON.stringify(all));
+      }
+    } catch(err) {}
+    return { likes: newLikes, userLiked: !hasLiked };
   } catch(e) {
     console.warn('Error toggling comment like:', e);
     return null;
@@ -197,36 +220,77 @@ async function fsAddCommentReply(commentId, replyObj) {
     await db.collection('comments').doc(commentId).update({
       replies: firebase.firestore.FieldValue.arrayUnion(replyObj)
     });
+    // Update local cache
+    try {
+      const all = JSON.parse(localStorage.getItem('mbire_comments') || '[]');
+      const idx = all.findIndex(c => c.id === commentId);
+      if (idx > -1) {
+        if (!all[idx].replies) all[idx].replies = [];
+        all[idx].replies.push(replyObj);
+        localStorage.setItem('mbire_comments', JSON.stringify(all));
+      }
+    } catch(err) {}
   } catch(e) {
     console.warn('Error adding reply:', e);
     throw e;
   }
 }
 
-// ─── Site Metrics (Page Visits & Views) ───────────────────────
+// ─── Site Metrics (Page Visits) ───────────────────────────────
+// Only counts once per browser session (first website open), not on every page navigation.
 async function recordPageVisit() {
   try {
-    const statsRef = db.collection('stats').doc('visitors');
-    await statsRef.set({
-      count: firebase.firestore.FieldValue.increment(1)
-    }, { merge: true });
+    // If already counted this session, do nothing
+    if (sessionStorage.getItem('mbire_session_counted')) return;
+    // Mark this session as counted immediately to prevent double-counting
+    sessionStorage.setItem('mbire_session_counted', '1');
+  } catch(e) {}
+
+  // Update local storage running total as fallback
+  try {
+    let localVis = parseInt(localStorage.getItem('mbire_visitors_count') || '0', 10);
+    localVis++;
+    localStorage.setItem('mbire_visitors_count', localVis.toString());
+  } catch(e) {}
+
+  // Increment Firestore counter
+  try {
+    if (typeof db !== 'undefined' && db && db.collection) {
+      const statsRef = db.collection('stats').doc('visitors');
+      await statsRef.set({
+        count: firebase.firestore.FieldValue.increment(1),
+        totalVisitors: firebase.firestore.FieldValue.increment(1)
+      }, { merge: true });
+    }
   } catch (err) {
     console.warn('Error recording page visit:', err);
   }
 }
 
 async function fsGetStats() {
+  let localCount = parseInt(localStorage.getItem('mbire_visitors_count') || '0', 10);
   try {
-    const doc = await db.collection('stats').doc('visitors').get();
-    if (doc.exists) {
-      return doc.data();
+    if (typeof db !== 'undefined' && db && db.collection) {
+      const doc = await db.collection('stats').doc('visitors').get();
+      if (doc.exists) {
+        const data = doc.data();
+        const serverCount = data.count || data.totalVisitors || 0;
+        const finalCount = Math.max(serverCount, localCount);
+        localStorage.setItem('mbire_visitors_count', finalCount.toString());
+        return { count: finalCount, totalVisitors: finalCount };
+      }
     }
-    return { count: 0 };
+    return { count: localCount, totalVisitors: localCount };
   } catch (err) {
     console.warn('Error fetching stats:', err);
-    return { count: 0 };
+    return { count: localCount, totalVisitors: localCount };
   }
 }
+
+// Auto-trigger on first page load of this session
+document.addEventListener('DOMContentLoaded', () => {
+  recordPageVisit();
+});
 
 // ─── Comments ─────────────────────────────────────────────────
 async function fsGetComments() {
@@ -247,13 +311,14 @@ async function fsGetCommentsByArticle(articleId) {
   try {
     const snap = await db.collection('comments')
       .where('articleId', '==', articleId)
-      .orderBy('date', 'desc')
       .get();
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const comments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    comments.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return comments;
   } catch (e) {
     console.warn('Firestore article comments read failed, using local fallback:', e);
     const all = JSON.parse(localStorage.getItem('mbire_comments') || '[]');
-    return all.filter(c => c.articleId === articleId);
+    return all.filter(c => c.articleId === articleId).sort((a, b) => new Date(b.date) - new Date(a.date));
   }
 }
 

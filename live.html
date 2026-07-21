@@ -162,6 +162,13 @@
       <li><a href="videos.html">Videos</a></li>
       <li><a href="live.html" class="active live-link"><span class="live-dot"></span>Live Broadcast</a></li>
       <li><a href="submit-news.html">Submit News</a></li>
+          <li class="nav-dropdown">
+        <span class="dropdown-trigger"><i class="fas fa-ellipsis-v"></i></span>
+        <div class="dropdown-menu">
+          <a href="about.html">About Us</a>
+          <a href="contact.html">Contact Us</a>
+        </div>
+      </li>
     </ul>
     <div class="nav-actions">
       <a href="login.html" class="btn-login" id="navLoginBtn">Login</a>
@@ -175,6 +182,8 @@
     <a href="videos.html">Videos</a>
     <a href="live.html" class="active">Live Broadcast</a>
     <a href="submit-news.html">Submit News</a>
+        <a href="about.html">About Us</a>
+    <a href="contact.html">Contact Us</a>
     <a href="login.html" id="mobLoginBtn">Login</a>
   </div>
 
@@ -184,10 +193,6 @@
       <div class="section-header" style="margin-bottom:24px;">
         <h1 class="section-title">Live Stream Portal</h1>
         <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-          <div class="refresh-indicator">
-            <span class="refresh-dot"></span>
-            <span id="refreshCountdown">Checking every 5m</span>
-          </div>
           <button class="btn btn-ghost btn-sm" onclick="manualRefreshLive()"><i class="fas fa-sync-alt"></i> Refresh Now</button>
         </div>
       </div>
@@ -228,36 +233,6 @@
           <p class="recent-live-meta" id="recentLiveMeta"></p>
         </div>
       </div>
-
-      <!-- Comments System Section -->
-      <section class="comments-section" style="margin-top: 32px; background: #fff; border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: clamp(16px, 4vw, 32px); box-shadow: var(--shadow);">
-        <h3 class="font-oswald uppercase ls-2" style="font-size:1.1rem; margin-bottom:20px; border-bottom: 2px solid var(--red); padding-bottom: 8px;">
-          Broadcast Comments (<span id="commentCount">0</span>)
-        </h3>
-
-        <!-- Comment Input form -->
-        <div class="comment-form" id="commentForm" style="margin-bottom: 24px;">
-          <!-- Name field (hidden when logged in) -->
-          <div class="form-group" id="guestNameGroup" style="margin-bottom: 8px;">
-            <input type="text" class="form-input" id="guestNameInput"
-              placeholder="✏️ Enter your name before commenting..."
-              style="width:100%; padding:8px 12px; border:1.5px solid var(--border); border-radius:var(--radius); background:var(--bg-card2); color:var(--text); font-family:var(--font-body); font-size:0.88rem;"
-              oninput="try{localStorage.setItem('mbire_guest_name',this.value)}catch(e){}"/>
-          </div>
-          <div class="form-group" style="margin-bottom: 12px;">
-            <textarea class="form-textarea" id="commentInput" placeholder="Write a comment... (Comments appear immediately)" style="min-height:80px;"></textarea>
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:0.78rem; color:var(--text-muted);" id="commentUserBadge">Please enter your name above</span>
-            <button class="btn btn-primary btn-sm" onclick="postNewLiveComment()">Post Comment</button>
-          </div>
-        </div>
-
-        <!-- Comments List Grid -->
-        <div class="comments-list" id="commentsListGrid" style="display:flex; flex-direction:column; gap:16px;">
-          <!-- Comments render dynamically -->
-        </div>
-      </section>
 
     </div>
   </main>
@@ -333,140 +308,6 @@
       document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40);
     });
 
-    // Live comments logic
-    let currentLiveVideoId = 'live_stream';
-    let liveCommentsList = [];
-    let authorName = 'Guest User';
-
-    const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
-    if (user) {
-      const text = user.role === 'superadmin' ? 'Dashboard' : 'Profile';
-      const url = user.role === 'superadmin' ? 'admin/index.html' : 'profile.html';
-      document.getElementById('navLoginBtn').textContent = text;
-      document.getElementById('navLoginBtn').href = url;
-      document.getElementById('mobLoginBtn').textContent = text;
-      document.getElementById('mobLoginBtn').href = url;
-
-      authorName = user.name;
-      // Hide name input for logged-in users
-      const guestGroup = document.getElementById('guestNameGroup');
-      if (guestGroup) guestGroup.style.display = 'none';
-      const userBadge = document.getElementById('commentUserBadge');
-      if (userBadge) {
-        userBadge.textContent = `Commenting as ${user.name} (${user.role === 'superadmin' ? 'Admin' : 'Member'})`;
-      }
-    } else {
-      // Guest: restore saved name and update badge live
-      const savedName = localStorage.getItem('mbire_guest_name') || '';
-      const nameInput = document.getElementById('guestNameInput');
-      if (nameInput && savedName) {
-        nameInput.value = savedName;
-      }
-      // Update badge text as user types their name
-      if (nameInput) {
-        nameInput.addEventListener('input', () => {
-          const badge = document.getElementById('commentUserBadge');
-          if (badge) badge.textContent = nameInput.value.trim() ? `Commenting as ${nameInput.value.trim()}` : 'Please enter your name above';
-        });
-        // Set initial badge if name already saved
-        if (savedName) {
-          const badge = document.getElementById('commentUserBadge');
-          if (badge) badge.textContent = `Commenting as ${savedName}`;
-        }
-      }
-    }
-
-    async function loadLiveComments(vidId) {
-      if (vidId) currentLiveVideoId = vidId;
-      try {
-        liveCommentsList = await fsGetCommentsByArticle(currentLiveVideoId);
-        const grid = document.getElementById('commentsListGrid');
-        const countEl = document.getElementById('commentCount');
-        if (!grid) return;
-
-        countEl.textContent = liveCommentsList.length;
-
-        if (liveCommentsList.length === 0) {
-          grid.innerHTML = `<p class="text-muted" style="text-align:center;padding:24px 0;font-size:0.88rem;">No comments yet. Be the first to comment!</p>`;
-          return;
-        }
-
-        grid.innerHTML = '';
-        liveCommentsList.forEach(cmt => {
-          const item = document.createElement('div');
-          item.className = 'comment-item';
-          item.style.cssText = 'display:flex;gap:12px;padding:12px;background:var(--bg-card2);border:1.5px solid var(--border);border-radius:var(--radius-lg);align-items:flex-start;';
-          const initials = (cmt.authorName || 'G').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-          item.innerHTML = `
-            <div class="comment-avatar" style="width:36px;height:36px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.9rem;font-weight:700;flex-shrink:0;">${initials}</div>
-            <div class="comment-body" style="flex:1;">
-              <div class="comment-meta" style="display:flex;gap:8px;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">
-                <span class="comment-user" style="font-weight:600;color:var(--text);">${cmt.authorName}</span>
-                <span class="comment-date">${timeAgo(cmt.date)}</span>
-              </div>
-              <p class="comment-text" style="font-size:0.875rem;color:var(--text-dim);margin:0;line-height:1.5;">${cmt.text}</p>
-            </div>
-          `;
-          grid.appendChild(item);
-        });
-      } catch (err) {
-        console.warn('Error loading live comments:', err);
-      }
-    }
-
-    async function postNewLiveComment() {
-      const input = document.getElementById('commentInput');
-      if (!input) return;
-      const val = input.value.trim();
-      if (!val) { alert('Please write a comment first.'); return; }
-
-      // Resolve author name
-      let resolvedName = authorName;
-      if (!user) {
-        const nameInput = document.getElementById('guestNameInput');
-        const typedName = nameInput ? nameInput.value.trim() : '';
-        if (!typedName) {
-          nameInput && nameInput.focus();
-          alert('Please enter your name before commenting.');
-          return;
-        }
-        resolvedName = typedName;
-        try { localStorage.setItem('mbire_guest_name', typedName); } catch(e) {}
-      }
-
-      const newCmt = {
-        id: 'cmt_' + Date.now(),
-        articleId: currentLiveVideoId,
-        authorName: resolvedName,
-        text: val,
-        date: new Date().toISOString()
-      };
-
-      try {
-        await fsSaveComment(newCmt);
-        input.value = '';
-        await loadLiveComments();
-      } catch (e) {
-        console.error('Error posting comment:', e);
-      }
-    }
-
-    function timeAgo(dateString) {
-      const date = new Date(dateString);
-      const now = new Date();
-      const seconds = Math.floor((now - date) / 1000);
-      if (seconds < 60) return 'Just now';
-      const minutes = Math.floor(seconds / 60);
-      if (minutes < 60) return `${minutes}m ago`;
-      const hours = Math.floor(minutes / 60);
-      if (hours < 24) return `${hours}h ago`;
-      const days = Math.floor(hours / 24);
-      return `${days}d ago`;
-    }
-
-    // Expose globally so youtube.js can call it
-    window.loadLiveComments = loadLiveComments;
-
     // Initialize Page
     document.addEventListener('DOMContentLoaded', async () => {
       if (typeof recordPageVisit === 'function') recordPageVisit();
@@ -480,11 +321,8 @@
         tickerTrack.appendChild(span);
       });
 
-      // Run live status check + start 60-second auto-poll with countdown indicator
+      // Run live status check
       checkChannelLiveState();
-      startLivePolling();
-      // Load initial comments (will update to specific video ID once live/premiere is detected)
-      loadLiveComments('live_stream');
     });
   </script>
   <script src="js/background-play.js"></script>
