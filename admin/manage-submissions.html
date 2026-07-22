@@ -81,7 +81,7 @@
   <script>
     // Guard
     const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
-    if (!user || user.role !== 'superadmin') location.href = '../login.html';
+    if (!user || (user.role !== 'superadmin' && user.role !== 'admin')) location.href = '../login.html';
 
     // Explicitly light mode
     document.body.classList.add('light-mode');

@@ -11,9 +11,9 @@
   <link rel="stylesheet" href="../css/admin.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" defer></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" defer></script>
-  <script src="../js/firebase.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="../js/firebase.js"></script>
 </head>
 <body class="light-mode">
 
@@ -161,7 +161,7 @@
   <script>
     // Guard: check if administrator role
     const user = JSON.parse(localStorage.getItem('mbire_user') || 'null');
-    if (!user || user.role !== 'superadmin') {
+    if (!user || (user.role !== 'superadmin' && user.role !== 'admin')) {
       location.href = '../login.html';
     }
 
@@ -191,32 +191,40 @@
       }, 25);
     }
 
-    // Load admin metrics
+    // Load admin metrics safely
     async function loadDashboardMetrics() {
-      if (typeof recordPageVisit === 'function') recordPageVisit();
-      articlesList = await fsGetArticles(100);
-      const users = await fsGetUsers();
-      const comments = await fsGetComments();
-      const submissions = await fsGetSubmissions();
+      try {
+        if (typeof recordPageVisit === 'function') recordPageVisit();
 
-      // Calculate total views
-      const totalViews = articlesList.reduce((acc, art) => acc + (art.views || 0), 0);
+        let users = [], comments = [], submissions = [];
+        try { articlesList = (typeof fsGetArticles === 'function') ? await fsGetArticles(100) : []; } catch(e){ articlesList = []; }
+        try { users = (typeof fsGetUsers === 'function') ? await fsGetUsers() : []; } catch(e){ users = []; }
+        try { comments = (typeof fsGetComments === 'function') ? await fsGetComments() : []; } catch(e){ comments = []; }
+        try { submissions = (typeof fsGetSubmissions === 'function') ? await fsGetSubmissions() : []; } catch(e){ submissions = []; }
 
-      // Fetch global page visitor stats
-      let totalVisitors = 0;
-      if (typeof fsGetStats === 'function') {
-        const stats = await fsGetStats();
-        totalVisitors = stats.count || stats.totalVisitors || 0;
+        // Calculate total views
+        const totalViews = articlesList.reduce((acc, art) => acc + (art.views || 0), 0);
+
+        // Fetch global page visitor stats
+        let totalVisitors = 0;
+        if (typeof fsGetStats === 'function') {
+          try {
+            const stats = await fsGetStats();
+            totalVisitors = stats.count || stats.totalVisitors || 0;
+          } catch(e){}
+        }
+
+        animateCount(document.getElementById('statArticles'), articlesList.length);
+        animateCount(document.getElementById('statTotalViews'), totalViews);
+        animateCount(document.getElementById('statVisitors'), totalVisitors);
+        animateCount(document.getElementById('statUsers'), users.length);
+        animateCount(document.getElementById('statComments'), comments.length);
+        animateCount(document.getElementById('statSubmissions'), submissions.length);
+
+        renderArticlesTable();
+      } catch(err) {
+        console.error('Error loading dashboard metrics:', err);
       }
-
-      animateCount(document.getElementById('statArticles'), articlesList.length);
-      animateCount(document.getElementById('statTotalViews'), totalViews);
-      animateCount(document.getElementById('statVisitors'), totalVisitors);
-      animateCount(document.getElementById('statUsers'), users.length);
-      animateCount(document.getElementById('statComments'), comments.length);
-      animateCount(document.getElementById('statSubmissions'), submissions.length);
-
-      renderArticlesTable();
     }
 
     // Render articles rows
