@@ -580,6 +580,36 @@
         document.getElementById('articleImageWrapper').style.display = 'none';
       }
 
+      // Render Photo & Video Gallery if multiple media files were uploaded
+      const mediaList = art.images && Array.isArray(art.images) && art.images.length > 0
+        ? art.images
+        : (art.image ? [art.image] : []);
+
+      if (mediaList.length > 1) {
+        let galleryContainer = document.getElementById('articleMediaGallery');
+        if (!galleryContainer) {
+          galleryContainer = document.createElement('div');
+          galleryContainer.id = 'articleMediaGallery';
+          galleryContainer.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:10px; margin:20px 0 24px;';
+          const banner = document.getElementById('articleImageWrapper');
+          banner.parentNode.insertBefore(galleryContainer, banner.nextSibling);
+        }
+        galleryContainer.innerHTML = '';
+        mediaList.forEach((mediaUrl, idx) => {
+          const isVid = mediaUrl.startsWith('data:video/') || mediaUrl.includes('.mp4') || mediaUrl.includes('.webm') || mediaUrl.includes('.mov');
+          const itemWrap = document.createElement('div');
+          itemWrap.style.cssText = 'position:relative; aspect-ratio:16/9; border-radius:8px; overflow:hidden; border:1.5px solid var(--border); background:#000; cursor:pointer;';
+          
+          if (isVid) {
+            itemWrap.innerHTML = `<video src="${mediaUrl}" style="width:100%;height:100%;object-fit:cover;" controls></video>`;
+          } else {
+            itemWrap.innerHTML = `<img src="${mediaUrl}" style="width:100%;height:100%;object-fit:cover;" alt="Gallery Photo ${idx+1}">`;
+            itemWrap.onclick = () => openLightbox(mediaUrl);
+          }
+          galleryContainer.appendChild(itemWrap);
+        });
+      }
+
       // PDF or standard article
       if (art.type === 'pdf' && art.pdfUrl) {
         document.getElementById('articleContent').style.display = 'none';

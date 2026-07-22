@@ -175,17 +175,27 @@
       const sub = submissions.find(s => s.id === id);
       if (!sub) return;
       document.getElementById('readModalContent').innerHTML = `
-        <h2 style="font-family:var(--font-title);font-size:1.3rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">${sub.title}</h2>
-        <div style="display:flex;gap:12px;margin-bottom:16px;font-size:0.82rem;color:var(--text-muted);">
-          <span><i class="fas fa-user"></i> ${sub.name}</span>
+        <h2 style="font-family:var(--font-title);font-size:1.3rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;color:var(--text);">${sub.title || 'Untitled Submission'}</h2>
+        <div style="display:flex;gap:12px;margin-bottom:16px;font-size:0.82rem;color:var(--text-muted);flex-wrap:wrap;">
+          <span><i class="fas fa-user"></i> ${sub.name || 'Anonymous'}</span>
           <span><i class="fas fa-envelope"></i> ${sub.email || '—'}</span>
+          <span><i class="far fa-clock"></i> ${timeAgo(sub.date)}</span>
         </div>
         ${(() => {
           const imgs = sub.images && sub.images.length ? sub.images : (sub.image ? [sub.image] : []);
           if (!imgs.length) return '';
-          return '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">' + imgs.map(u => `<img src="${u}" alt="Photo" style="max-width:100%;border-radius:var(--radius);border:1.5px solid var(--border);cursor:pointer;" onclick="window.open('${u}','_blank')">`).join('') + '</div>';
+          return '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-bottom:16px;">' + imgs.map(u => {
+            const isVid = u.startsWith('data:video/') || u.includes('.mp4') || u.includes('.webm') || u.includes('.mov');
+            return isVid 
+              ? `<video src="${u}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--radius);border:1.5px solid var(--border);" controls></video>`
+              : `<img src="${u}" alt="Submitted Photo" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:var(--radius);border:1.5px solid var(--border);cursor:pointer;" onclick="window.open('${u}','_blank')">`;
+          }).join('') + '</div>';
         })()}
-        <p style="font-size:0.9rem;line-height:1.8;color:var(--text-dim);">${(sub.content||'').replace(/\n/g,'<br>')}</p>
+        <div style="font-size:0.9rem;line-height:1.8;color:var(--text);background:var(--bg-card2);padding:16px;border-radius:8px;border:1px solid var(--border);margin-bottom:20px;white-space:pre-wrap;">${sub.content || 'No description text submitted.'}</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button class="btn btn-ghost btn-sm" onclick="closeReadModal()">Close</button>
+          <button class="btn btn-primary btn-sm" onclick="useAsArticle('${sub.id}')"><i class="fas fa-pen-nib"></i> Draft & Post Article</button>
+        </div>
       `;
       document.getElementById('readModal').classList.add('open');
     }
@@ -197,8 +207,9 @@
     function useAsArticle(id) {
       const sub = submissions.find(s => s.id === id);
       if (!sub) return;
-      const firstImage = sub.images && sub.images.length ? sub.images[0] : (sub.image || '');
-      const url = `post-news.html?prefill=${encodeURIComponent(JSON.stringify({ title: sub.title, body: sub.content, image: firstImage }))}`;
+      const allImgs = sub.images && sub.images.length ? sub.images : (sub.image ? [sub.image] : []);
+      const firstImage = allImgs.length ? allImgs[0] : '';
+      const url = `post-news.html?prefill=${encodeURIComponent(JSON.stringify({ title: sub.title, body: sub.content, image: firstImage, images: allImgs }))}`;
       location.href = url;
     }
 

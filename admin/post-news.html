@@ -358,6 +358,10 @@
           document.getElementById('artAuthor').value = art.author || 'MBIRE TV Desk';
           document.getElementById('artImageUrl').value = art.image || '';
           if (art.image) { previewImg.src = art.image; previewImg.style.display = 'block'; }
+          if (art.images && Array.isArray(art.images)) {
+            uploadedImages = art.images.map(u => ({ url: u, name: 'Media' }));
+            renderGallery();
+          }
           document.getElementById('titleCount').textContent = (art.title || '').length + '/150';
           document.getElementById('bodyCount').textContent = (art.body || '').length + ' characters';
         }
@@ -369,6 +373,10 @@
           if (pre.title) { document.getElementById('artTitle').value = pre.title; document.getElementById('titleCount').textContent = pre.title.length + '/150'; }
           if (pre.body) { document.getElementById('artBody').value = pre.body; document.getElementById('bodyCount').textContent = pre.body.length + ' characters'; }
           if (pre.image) { document.getElementById('artImageUrl').value = pre.image; previewImg.src = pre.image; previewImg.style.display = 'block'; }
+          if (pre.images && Array.isArray(pre.images) && pre.images.length > 0) {
+            uploadedImages = pre.images.map(u => ({ url: u, name: 'Submitted Photo' }));
+            renderGallery();
+          }
         } catch(e) { console.warn('Could not parse prefill param', e); }
       }
     }
@@ -396,10 +404,16 @@
       publishBtn.disabled = true;
       publishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
+      const allMediaUrls = uploadedImages.map(img => img.url);
+      if (image && !allMediaUrls.includes(image)) {
+        allMediaUrls.unshift(image);
+      }
+
       const artObj = {
         id: editMode ? editId : 'art_' + Date.now(),
         title, body, cat, author,
-        image: image || '',
+        image: image || (allMediaUrls.length ? allMediaUrls[0] : ''),
+        images: allMediaUrls,
         type: type,
         pdfUrl: pdfUrl || ''
       };
