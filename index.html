@@ -92,8 +92,11 @@
     <section class="section" style="padding-top:20px; padding-bottom:40px;">
       <div class="container" style="max-width:100%; padding:0 24px;">
         <div class="section-header">
-          <h2 class="section-title">Featured Stories</h2>
-          <a href="news.html" class="view-all">See All News <i class="fas fa-arrow-right"></i></a>
+          <h2 class="section-title">Featured Stories & Broadcasts</h2>
+          <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+            <a href="news.html" class="view-all"><i class="fas fa-newspaper"></i> See All News</a>
+            <a href="videos.html" class="view-all" style="color:var(--red); font-weight:700;"><i class="fab fa-youtube"></i> See All Videos <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
         
         <div id="mixedFeedGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(min(210px,100%), 1fr)); gap:14px;">
@@ -101,6 +104,16 @@
             <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--red); margin-bottom:12px;"></i>
             <p class="text-muted">Loading latest stories & broadcasts...</p>
           </div>
+        </div>
+
+        <!-- See All Videos / News Bottom CTA -->
+        <div style="display:flex; justify-content:center; gap:14px; margin-top:28px; flex-wrap:wrap;">
+          <a href="videos.html" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:8px;">
+            <i class="fab fa-youtube"></i> See All Videos
+          </a>
+          <a href="news.html" class="btn btn-ghost" style="display:inline-flex; align-items:center; gap:8px; border:1.5px solid var(--border);">
+            <i class="fas fa-newspaper"></i> See All News
+          </a>
         </div>
       </div>
     </section>
