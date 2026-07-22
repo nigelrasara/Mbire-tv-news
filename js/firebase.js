@@ -77,37 +77,41 @@ async function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 
   });
 }
 
-// Upload file helper (auto-compressed images and videos, no size limits)
+// Upload file helper (auto-compressed images and videos, ultra-fast upload)
 async function fsUploadImage(rawFile) {
   // 1. Auto-compress if it's an image
   const file = await compressImage(rawFile);
 
-  // 2. Upload to Firebase Storage if available
-  if (storage) {
+  const getDataUrl = (f) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Failed to read file.'));
+    reader.readAsDataURL(f);
+  });
+
+  // 2. Try Firebase Storage with a fast 3-second timeout
+  if (typeof storage !== 'undefined' && storage) {
     try {
+      const cleanName = (file.name || 'upload').replace(/[^a-zA-Z0-9._-]/g, '_');
       const uploadPromise = (async () => {
-        const ref = storage.ref().child('uploads/' + Date.now() + '_' + file.name);
+        const ref = storage.ref().child('uploads/' + Date.now() + '_' + cleanName);
         const snap = await ref.put(file);
         return await snap.ref.getDownloadURL();
       })();
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Storage upload timed out after 60s')), 60000)
+        setTimeout(() => reject(new Error('Storage upload timeout')), 3000)
       );
 
       return await Promise.race([uploadPromise, timeoutPromise]);
     } catch (e) {
-      console.warn('Firebase Storage upload failed or timed out, using Data URL fallback:', e);
+      console.warn('Firebase Storage bypass/timeout, using fast Data URL:', e);
+      return await getDataUrl(file);
     }
   }
-  
-  // 3. Data URL / Base64 fallback
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('Failed to read file.'));
-    reader.readAsDataURL(file);
-  });
+
+  // 3. Ultra-fast Data URL fallback
+  return await getDataUrl(file);
 }
 
 // ─── Articles ─────────────────────────────────────────────────

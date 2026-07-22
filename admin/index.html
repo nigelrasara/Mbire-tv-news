@@ -191,29 +191,45 @@
       }, 25);
     }
 
-    // Load admin metrics safely
+    // Load admin metrics safely and instantly
     async function loadDashboardMetrics() {
       try {
         if (typeof recordPageVisit === 'function') recordPageVisit();
 
-        let users = [], comments = [], submissions = [];
-        try { articlesList = (typeof fsGetArticles === 'function') ? await fsGetArticles(100) : []; } catch(e){ articlesList = []; }
-        try { users = (typeof fsGetUsers === 'function') ? await fsGetUsers() : []; } catch(e){ users = []; }
-        try { comments = (typeof fsGetComments === 'function') ? await fsGetComments() : []; } catch(e){ comments = []; }
-        try { submissions = (typeof fsGetSubmissions === 'function') ? await fsGetSubmissions() : []; } catch(e){ submissions = []; }
-
-        // Calculate total views
-        const totalViews = articlesList.reduce((acc, art) => acc + (art.views || 0), 0);
-
-        // Fetch global page visitor stats
-        let totalVisitors = 0;
-        if (typeof fsGetStats === 'function') {
-          try {
-            const stats = await fsGetStats();
-            totalVisitors = stats.count || stats.totalVisitors || 0;
-          } catch(e){}
+        // 1. INSTANT CACHED DISPLAY (0ms delay)
+        const cachedMetrics = JSON.parse(localStorage.getItem('mbire_admin_metrics') || 'null');
+        if (cachedMetrics) {
+          if (cachedMetrics.articlesCount !== undefined) animateCount(document.getElementById('statArticles'), cachedMetrics.articlesCount);
+          if (cachedMetrics.totalViews !== undefined) animateCount(document.getElementById('statTotalViews'), cachedMetrics.totalViews);
+          if (cachedMetrics.totalVisitors !== undefined) animateCount(document.getElementById('statVisitors'), cachedMetrics.totalVisitors);
+          if (cachedMetrics.usersCount !== undefined) animateCount(document.getElementById('statUsers'), cachedMetrics.usersCount);
+          if (cachedMetrics.commentsCount !== undefined) animateCount(document.getElementById('statComments'), cachedMetrics.commentsCount);
+          if (cachedMetrics.submissionsCount !== undefined) animateCount(document.getElementById('statSubmissions'), cachedMetrics.submissionsCount);
+          if (cachedMetrics.articlesList && cachedMetrics.articlesList.length > 0) {
+            articlesList = cachedMetrics.articlesList;
+            renderArticlesTable();
+          }
         }
 
+        // 2. PARALLEL NETWORK FETCH (All collections fetched at the same time)
+        const [resArt, resUsers, resComments, resSubmissions, resStats] = await Promise.allSettled([
+          typeof fsGetArticles === 'function' ? fsGetArticles(100) : Promise.resolve([]),
+          typeof fsGetUsers === 'function' ? fsGetUsers() : Promise.resolve([]),
+          typeof fsGetComments === 'function' ? fsGetComments() : Promise.resolve([]),
+          typeof fsGetSubmissions === 'function' ? fsGetSubmissions() : Promise.resolve([]),
+          typeof fsGetStats === 'function' ? fsGetStats() : Promise.resolve({})
+        ]);
+
+        articlesList = (resArt.status === 'fulfilled' && Array.isArray(resArt.value)) ? resArt.value : [];
+        const users = (resUsers.status === 'fulfilled' && Array.isArray(resUsers.value)) ? resUsers.value : [];
+        const comments = (resComments.status === 'fulfilled' && Array.isArray(resComments.value)) ? resComments.value : [];
+        const submissions = (resSubmissions.status === 'fulfilled' && Array.isArray(resSubmissions.value)) ? resSubmissions.value : [];
+        const stats = (resStats.status === 'fulfilled' && resStats.value) ? resStats.value : {};
+
+        const totalViews = articlesList.reduce((acc, art) => acc + (art.views || 0), 0);
+        const totalVisitors = stats.count || stats.totalVisitors || 0;
+
+        // Render fresh animated counts
         animateCount(document.getElementById('statArticles'), articlesList.length);
         animateCount(document.getElementById('statTotalViews'), totalViews);
         animateCount(document.getElementById('statVisitors'), totalVisitors);
@@ -222,6 +238,18 @@
         animateCount(document.getElementById('statSubmissions'), submissions.length);
 
         renderArticlesTable();
+
+        // Save fresh metrics to cache for next load
+        localStorage.setItem('mbire_admin_metrics', JSON.stringify({
+          articlesCount: articlesList.length,
+          totalViews,
+          totalVisitors,
+          usersCount: users.length,
+          commentsCount: comments.length,
+          submissionsCount: submissions.length,
+          articlesList: articlesList.slice(0, 20)
+        }));
+
       } catch(err) {
         console.error('Error loading dashboard metrics:', err);
       }
