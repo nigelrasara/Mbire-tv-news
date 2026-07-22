@@ -26,8 +26,63 @@ try {
   console.warn('Firebase Storage not loaded or initialized:', e);
 }
 
-// Upload file helper
-async function fsUploadImage(file) {
+// Helper: Auto-compress large photos using HTML5 Canvas before uploading
+async function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.78) {
+  if (!file || !file.type || !file.type.startsWith('image/')) {
+    return file; // Return videos/documents uncompressed
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) { resolve(file); return; }
+            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+}
+
+// Upload file helper (auto-compressed images and videos, no size limits)
+async function fsUploadImage(rawFile) {
+  // 1. Auto-compress if it's an image
+  const file = await compressImage(rawFile);
+
+  // 2. Upload to Firebase Storage if available
   if (storage) {
     try {
       const uploadPromise = (async () => {
@@ -37,25 +92,20 @@ async function fsUploadImage(file) {
       })();
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Firebase Storage upload timed out after 3s')), 3000)
+        setTimeout(() => reject(new Error('Storage upload timed out after 60s')), 60000)
       );
 
       return await Promise.race([uploadPromise, timeoutPromise]);
     } catch (e) {
-      console.warn('Firebase Storage upload failed or timed out, falling back to Base64 conversion:', e);
-      // Fall through to Base64 fallback below
+      console.warn('Firebase Storage upload failed or timed out, using Data URL fallback:', e);
     }
   }
   
-  // Base64 fallback (max size 1MB for Firestore compatibility)
+  // 3. Data URL / Base64 fallback
   return new Promise((resolve, reject) => {
-    if (file.size > 800000) {
-      reject(new Error('Image is too large. Please select a photo under 800KB.'));
-      return;
-    }
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('Failed to read image file.'));
+    reader.onerror = () => reject(new Error('Failed to read file.'));
     reader.readAsDataURL(file);
   });
 }
@@ -237,15 +287,8 @@ async function fsAddCommentReply(commentId, replyObj) {
 }
 
 // ─── Site Metrics (Page Visits) ───────────────────────────────
-// Only counts once per browser session (first website open), not on every page navigation.
+// Counts on every page request and navigation as requested
 async function recordPageVisit() {
-  try {
-    // If already counted this session, do nothing
-    if (sessionStorage.getItem('mbire_session_counted')) return;
-    // Mark this session as counted immediately to prevent double-counting
-    sessionStorage.setItem('mbire_session_counted', '1');
-  } catch(e) {}
-
   // Update local storage running total as fallback
   try {
     let localVis = parseInt(localStorage.getItem('mbire_visitors_count') || '0', 10);

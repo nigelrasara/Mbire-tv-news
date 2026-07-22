@@ -464,9 +464,12 @@ function manualRefreshLive() {
   checkChannelLiveState();
 }
 
-// ─── Start Polling (No-op since autocheck is removed) ──────────
+// ─── Start Polling (Auto-check every 30s) ────────────────────
 function startLivePolling() {
-  // Auto-polling disabled as per request
+  if (_livePollingInterval) clearInterval(_livePollingInterval);
+  _livePollingInterval = setInterval(() => {
+    checkChannelLiveState();
+  }, 30000);
 }
 
 // ─── Inject or remove live banner on homepage ─────────────────
@@ -497,6 +500,55 @@ function updateHomeLiveBanner(isLive, videoId, title) {
   }
 }
 
+// Helper to get latest fallback video (completed stream or latest upload)
+async function fetchLatestBroadcastVideo() {
+  const fmtDate = (raw) => raw
+    ? new Date(raw).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })
+    : 'Recent';
+
+  // 1. Try eventType=completed
+  try {
+    const url1 = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${YOUTUBE_CONFIG.channelId}&type=video&eventType=completed&order=date&maxResults=1&key=${YOUTUBE_CONFIG.apiKey}`;
+    const res1 = await fetch(url1);
+    if (res1.ok) {
+      const data1 = await res1.json();
+      if (data1.items && data1.items.length > 0) {
+        const v = data1.items[0];
+        return { id: v.id.videoId, title: v.snippet.title, dateStr: fmtDate(v.snippet.publishedAt), label: '🔴 Last Live Broadcast' };
+      }
+    }
+  } catch (e1) {}
+
+  // 2. Try search keyword "live"
+  try {
+    const url2 = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${YOUTUBE_CONFIG.channelId}&type=video&q=live&order=date&maxResults=5&key=${YOUTUBE_CONFIG.apiKey}`;
+    const res2 = await fetch(url2);
+    if (res2.ok) {
+      const data2 = await res2.json();
+      if (data2.items && data2.items.length > 0) {
+        const v = data2.items[0];
+        return { id: v.id.videoId, title: v.snippet.title, dateStr: fmtDate(v.snippet.publishedAt), label: '📺 Recent Live Session' };
+      }
+    }
+  } catch (e2) {}
+
+  // 3. Fallback to latest playlist upload
+  try {
+    const url3 = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${YOUTUBE_FALLBACK.uploadsPlaylistId}&maxResults=1&key=${YOUTUBE_CONFIG.apiKey}`;
+    const res3 = await fetch(url3);
+    if (res3.ok) {
+      const data3 = await res3.json();
+      if (data3.items && data3.items.length > 0) {
+        const v = data3.items[0];
+        const id = v.snippet.resourceId?.videoId || v.snippet.resourceId;
+        return { id, title: v.snippet.title, dateStr: fmtDate(v.snippet.publishedAt), label: '📡 Most Recent Broadcast' };
+      }
+    }
+  } catch (e3) {}
+
+  return null;
+}
+
 // ─── Fetch and show most recent past live / recent broadcast ──
 async function loadRecentLiveReplay() {
   const panel   = document.getElementById('recentLivePanel');
@@ -506,80 +558,29 @@ async function loadRecentLiveReplay() {
   const badge   = document.getElementById('recentLiveBadgeLabel');
   if (!panel || !player) return;
 
-  // Helper: display the found video in the panel
-  const showVideo = (id, title, dateStr, label) => {
-    if (titleEl) titleEl.textContent = title;
-    if (badge)   badge.textContent = label || 'Most Recent Live';
+  const video = await fetchLatestBroadcastVideo();
+  if (video) {
+    if (titleEl) titleEl.textContent = video.title;
+    if (badge)   badge.textContent = video.label || 'Most Recent Live';
     if (metaEl)  metaEl.innerHTML = `
       <span style="display:inline-flex;align-items:center;gap:6px;">
         <i class="fas fa-calendar-alt" style="color:var(--red);"></i>
-        Broadcast on: <strong>${dateStr}</strong>
+        Broadcast on: <strong>${video.dateStr}</strong>
       </span>
       &nbsp;·&nbsp;
-      <a href="https://www.youtube.com/watch?v=${id}" target="_blank"
+      <a href="https://www.youtube.com/watch?v=${video.id}" target="_blank"
          style="color:var(--red);font-weight:600;text-decoration:none;">
         <i class="fab fa-youtube"></i> Watch on YouTube
       </a>
     `;
-    const targetSrc = `https://www.youtube.com/embed/${id}?rel=0`;
-    // Only update iframe src if it is not already playing this video to avoid disrupting the user
-    if (!player.src || !player.src.includes(id)) {
+    const targetSrc = `https://www.youtube.com/embed/${video.id}?rel=0`;
+    if (!player.src || !player.src.includes(video.id)) {
       player.src = targetSrc;
     }
     panel.style.display = 'block';
-  };
-
-  const fmtDate = (raw) => raw
-    ? new Date(raw).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })
-    : 'Unknown date';
-
-  // ── Step 1: Try eventType=completed (formally scheduled live events) ──
-  try {
-    const url1 = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${YOUTUBE_CONFIG.channelId}&type=video&eventType=completed&order=date&maxResults=1&key=${YOUTUBE_CONFIG.apiKey}`;
-    const res1 = await fetch(url1);
-    if (res1.ok) {
-      const data1 = await res1.json();
-      if (data1.items && data1.items.length > 0) {
-        const v = data1.items[0];
-        showVideo(v.id.videoId, v.snippet.title, fmtDate(v.snippet.publishedAt), '🔴 Most Recent Live Broadcast');
-        return;
-      }
-    }
-  } catch (e1) { console.warn('Step 1 (completed) failed:', e1); }
-
-  // ── Step 2: Search channel videos with "live" keyword ──────────────────
-  try {
-    const url2 = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${YOUTUBE_CONFIG.channelId}&type=video&q=live&order=date&maxResults=5&key=${YOUTUBE_CONFIG.apiKey}`;
-    const res2 = await fetch(url2);
-    if (res2.ok) {
-      const data2 = await res2.json();
-      if (data2.items && data2.items.length > 0) {
-        const v = data2.items[0];
-        showVideo(v.id.videoId, v.snippet.title, fmtDate(v.snippet.publishedAt), '📺 Recent Live Session');
-        return;
-      }
-    }
-  } catch (e2) { console.warn('Step 2 (keyword search) failed:', e2); }
-
-  // ── Step 3: Fall back to most recent upload from the uploads playlist ──
-  try {
-    const url3 = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${YOUTUBE_FALLBACK.uploadsPlaylistId}&maxResults=1&key=${YOUTUBE_CONFIG.apiKey}`;
-    const res3 = await fetch(url3);
-    if (res3.ok) {
-      const data3 = await res3.json();
-      if (data3.items && data3.items.length > 0) {
-        const v   = data3.items[0];
-        const id  = v.snippet.resourceId?.videoId || v.snippet.resourceId;
-        const t   = v.snippet.title;
-        const dt  = fmtDate(v.snippet.publishedAt);
-        showVideo(id, t, dt, '📡 Most Recent Broadcast');
-        return;
-      }
-    }
-  } catch (e3) { console.warn('Step 3 (playlist fallback) failed:', e3); }
-
-  // All steps failed — hide panel
-  panel.style.display = 'none';
+  } else {
+    panel.style.display = 'none';
+  }
 }
 
 // ─── Check Channel Live State ─────────────────────────────────
@@ -589,35 +590,54 @@ async function checkChannelLiveState() {
   const liveIndicator = document.getElementById('liveIndicator');
   const liveStatusText= document.getElementById('liveStatusText');
 
-  // ── OFFLINE display helper ──────────────────────────────────
-  const showOffline = (msg) => {
-    const livePanel = document.querySelector('.live-panel');
-    if (livePanel) livePanel.style.display = 'none';
+  // Ensure polling is running on live.html
+  if (!_livePollingInterval && window.location.pathname.includes('live.html')) {
+    startLivePolling();
+  }
 
-    if (livePlayer) livePlayer.style.display = 'none';
-    if (offlineNotice) {
-      offlineNotice.style.display = 'flex';
-      offlineNotice.innerHTML = `
-        <div style="text-align:center;padding:32px 24px;max-width:480px;">
-          <i class="fab fa-youtube" style="font-size:3rem;color:var(--text-muted);margin-bottom:16px;display:block;"></i>
-          <p style="font-family:var(--font-title);font-size:1.1rem;text-transform:uppercase;letter-spacing:1px;color:var(--text);margin-bottom:8px;">Not Broadcasting</p>
-          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:20px;">${msg}</p>
-          <a href="${YOUTUBE_FALLBACK.channelUrl}" target="_blank" class="btn btn-primary btn-sm" style="display:inline-flex;gap:8px;">
-            <i class="fab fa-youtube"></i> Visit YouTube Channel
-          </a>
-        </div>
-      `;
+  // ── OFFLINE display helper (presents last live / recent video in main player) ──────────────────
+  const showOffline = async (msg) => {
+    const livePanel = document.querySelector('.live-panel');
+    if (livePanel) livePanel.style.display = 'block';
+
+    const recentVid = await fetchLatestBroadcastVideo();
+    if (recentVid && livePlayer) {
+      livePlayer.src = `https://www.youtube.com/embed/${recentVid.id}?rel=0`;
+      livePlayer.style.display = 'block';
+      if (offlineNotice) offlineNotice.style.display = 'none';
+      if (liveIndicator) {
+        liveIndicator.className = 'live-badge';
+        const span = liveIndicator.querySelector('span:last-child');
+        if (span) { span.textContent = '📺 LAST BROADCAST (OFFLINE)'; span.style.color = 'var(--text-muted)'; }
+        const dot = liveIndicator.querySelector('.live-dot');
+        if (dot) dot.style.display = 'none';
+      }
+      if (liveStatusText) liveStatusText.textContent = `Last Broadcast: ${recentVid.title}`;
+    } else {
+      if (livePlayer) livePlayer.style.display = 'none';
+      if (offlineNotice) {
+        offlineNotice.style.display = 'flex';
+        offlineNotice.innerHTML = `
+          <div style="text-align:center;padding:32px 24px;max-width:480px;">
+            <i class="fab fa-youtube" style="font-size:3rem;color:var(--text-muted);margin-bottom:16px;display:block;"></i>
+            <p style="font-family:var(--font-title);font-size:1.1rem;text-transform:uppercase;letter-spacing:1px;color:var(--text);margin-bottom:8px;">Not Broadcasting</p>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:20px;">${msg}</p>
+            <a href="${YOUTUBE_FALLBACK.channelUrl}" target="_blank" class="btn btn-primary btn-sm" style="display:inline-flex;gap:8px;">
+              <i class="fab fa-youtube"></i> Visit YouTube Channel
+            </a>
+          </div>
+        `;
+      }
+      if (liveIndicator) {
+        liveIndicator.className = 'live-badge';
+        const span = liveIndicator.querySelector('span:last-child');
+        if (span) { span.textContent = 'OFFLINE'; span.style.color = 'var(--text-muted)'; }
+        const dot = liveIndicator.querySelector('.live-dot');
+        if (dot) dot.style.display = 'none';
+      }
+      if (liveStatusText) liveStatusText.textContent = 'Currently Offline';
     }
-    if (liveIndicator) {
-      liveIndicator.className = 'live-badge';
-      const span = liveIndicator.querySelector('span:last-child');
-      if (span) { span.textContent = 'OFFLINE'; span.style.color = 'var(--text-muted)'; }
-      const dot = liveIndicator.querySelector('.live-dot');
-      if (dot) dot.style.display = 'none';
-    }
-    if (liveStatusText) liveStatusText.textContent = 'Currently Offline';
     updateHomeLiveBanner(false);
-    // Load the most recent past live for replay
     loadRecentLiveReplay();
   };
 
@@ -635,16 +655,6 @@ async function checkChannelLiveState() {
 
     if (liveData.items && liveData.items.length > 0) {
       // ── STATE: LIVE NOW ───────────────────────────────────────
-      // Stop polling to prevent disrupting live playback!
-      if (_livePollingInterval) {
-        clearInterval(_livePollingInterval);
-        _livePollingInterval = null;
-      }
-      const countdownEl = document.getElementById('refreshCountdown');
-      if (countdownEl) {
-        countdownEl.textContent = 'Auto-check stopped (Live Active)';
-      }
-
       const liveVideo = liveData.items[0];
       const videoId   = liveVideo.id.videoId;
       const title     = liveVideo.snippet.title;
@@ -653,7 +663,10 @@ async function checkChannelLiveState() {
       if (livePanel) livePanel.style.display = 'block';
 
       if (livePlayer) {
-        livePlayer.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0`;
+        const liveSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0`;
+        if (!livePlayer.src || !livePlayer.src.includes(videoId)) {
+          livePlayer.src = liveSrc;
+        }
         livePlayer.style.display = 'block';
       }
       if (offlineNotice) offlineNotice.style.display = 'none';
@@ -670,17 +683,12 @@ async function checkChannelLiveState() {
       // Update homepage live banner
       updateHomeLiveBanner(true, videoId, title);
 
-      // Track for mini player — if user navigates away from live.html, video continues
       if (window.MbireMiniPlayer) {
         window.MbireMiniPlayer.show(videoId, title, true);
       }
-
-      // Load comments for the active live video
       if (window.loadLiveComments) {
         window.loadLiveComments(videoId);
       }
-
-      // Hide recent live panel while live is active
       const recentPanel = document.getElementById('recentLivePanel');
       if (recentPanel) recentPanel.style.display = 'none';
       return;
@@ -697,7 +705,6 @@ async function checkChannelLiveState() {
         const nextId    = nextLive.id.videoId;
         const nextTitle = nextLive.snippet.title;
         
-        // Fetch actual video details to get scheduledStartTime
         let actualStartTime = null;
         try {
           const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${nextId}&key=${YOUTUBE_CONFIG.apiKey}`;
@@ -720,17 +727,15 @@ async function checkChannelLiveState() {
         const now = new Date();
 
         if (scheduledDate) {
-          // If the scheduled start time is in the past by more than 2 hours (stale or cancelled)
-          const gracePeriod = 2 * 60 * 60 * 1000; // 2 hours
+          const gracePeriod = 2 * 60 * 60 * 1000;
           if (scheduledDate.getTime() + gracePeriod < now.getTime()) {
-            showOffline('MBIRE TV ZIMBABWE is not currently broadcasting on YouTube. Check back soon or browse our recent broadcast below.');
+            await showOffline('MBIRE TV ZIMBABWE is not currently broadcasting on YouTube.');
             return;
           }
         }
 
         const timeStr = scheduledDate ? scheduledDate.toLocaleString() : 'soon';
 
-        // Load comments for the upcoming live premiere
         if (window.loadLiveComments) {
           window.loadLiveComments(nextId);
         }
@@ -762,22 +767,20 @@ async function checkChannelLiveState() {
         }
         if (liveStatusText) liveStatusText.textContent = `Coming up: ${nextTitle}`;
         updateHomeLiveBanner(false);
-        // Still show the most recent past live below
         loadRecentLiveReplay();
         return;
       }
     }
 
     // ── 3. No live & no upcoming → OFFLINE ─────────────────────
-    showOffline('MBIRE TV ZIMBABWE is not currently broadcasting on YouTube. Check back soon or browse our recent broadcast below.');
+    await showOffline('MBIRE TV ZIMBABWE is not currently broadcasting on YouTube.');
     if (window.loadLiveComments) {
       window.loadLiveComments('live_stream');
     }
 
   } catch (err) {
     console.error('Error checking live state:', err);
-    // Do not call showOffline() on error to prevent live banner/player from disappearing
-    // during temporary errors or YouTube API rate limits.
+    await showOffline('MBIRE TV ZIMBABWE channel broadcast check offline.');
   }
 }
 
@@ -824,6 +827,16 @@ async function fsGetYouTubeVideosData(maxResults = 10) {
   if (!isYouTubeApiKeyConfigured()) {
     return [];
   }
+  const cacheKey = 'mbire_yt_cache_' + maxResults;
+  const cacheTimeKey = cacheKey + '_time';
+  try {
+    const cached = sessionStorage.getItem(cacheKey);
+    const cachedTime = sessionStorage.getItem(cacheTimeKey);
+    if (cached && cachedTime && (Date.now() - parseInt(cachedTime, 10) < 120000)) {
+      return JSON.parse(cached);
+    }
+  } catch(e) {}
+
   try {
     const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${YOUTUBE_FALLBACK.uploadsPlaylistId}&maxResults=${maxResults}&key=${YOUTUBE_CONFIG.apiKey}`;
     const response = await fetch(url);
@@ -855,6 +868,11 @@ async function fsGetYouTubeVideosData(maxResults = 10) {
       }
     }
 
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify(items));
+      sessionStorage.setItem(cacheTimeKey, Date.now().toString());
+    } catch(e) {}
+
     return items;
   } catch (e) {
     console.warn('Error fetching youtube videos data:', e);
@@ -862,3 +880,64 @@ async function fsGetYouTubeVideosData(maxResults = 10) {
   }
 }
 window.fsGetYouTubeVideosData = fsGetYouTubeVideosData;
+
+// ─── Initialize Breaking Ticker (Articles + 3 Latest Videos) ──
+async function initBreakingTicker() {
+  const tickerTrack = document.getElementById('tickerTrack');
+  if (!tickerTrack) return;
+
+  try {
+    let articles = [];
+    if (typeof fsGetArticles === 'function') {
+      articles = await fsGetArticles(5);
+    }
+
+    let videos = [];
+    if (typeof fsGetYouTubeVideosData === 'function') {
+      videos = await fsGetYouTubeVideosData(3);
+    }
+
+    tickerTrack.innerHTML = '';
+
+    const defaultSpan = document.createElement('span');
+    defaultSpan.className = 'ticker-item';
+    defaultSpan.innerHTML = `MBIRE TV ZIMBABWE &mdash; The most independent Zimbabwean news channel. Subscribe to our YouTube channel! <span class="ticker-separator">●</span>`;
+    tickerTrack.appendChild(defaultSpan);
+
+    // 3 Latest Video Headlines
+    videos.slice(0, 3).forEach(v => {
+      const title = v.snippet?.title || 'New Video';
+      const videoId = v.snippet?.resourceId?.videoId || v.id?.videoId || v.id;
+      const span = document.createElement('span');
+      span.className = 'ticker-item';
+      span.style.cursor = 'pointer';
+      span.innerHTML = `<strong style="color:#FF4444;"><i class="fab fa-youtube"></i> LATEST VIDEO:</strong> &nbsp;${title} <span class="ticker-separator">●</span>`;
+      if (videoId && typeof openVideoModal === 'function') {
+        span.onclick = () => openVideoModal(videoId, title.replace(/'/g, "\\'"));
+      }
+      tickerTrack.appendChild(span);
+    });
+
+    // Top News Articles
+    articles.slice(0, 5).forEach(art => {
+      const span = document.createElement('span');
+      span.className = 'ticker-item';
+      span.style.cursor = 'pointer';
+      span.innerHTML = `<strong>NEWS:</strong> &nbsp;${art.title} <span class="ticker-separator">●</span>`;
+      span.onclick = () => location.href = `news-article.html?id=${art.id}`;
+      tickerTrack.appendChild(span);
+    });
+
+    // Duplicate ticker items for seamless -50% continuous scrolling on all screen sizes
+    tickerTrack.innerHTML += tickerTrack.innerHTML;
+
+  } catch (err) {
+    console.warn('Error initializing ticker:', err);
+  }
+}
+window.initBreakingTicker = initBreakingTicker;
+
+document.addEventListener('DOMContentLoaded', () => {
+  initBreakingTicker();
+});
+

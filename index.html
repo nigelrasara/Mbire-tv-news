@@ -5,14 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="MBIRE TV ZIMBABWE - Zimbabwe's premier online independent news channel. Watch live broadcasts, latest report videos and breaking updates.">
   <title>MBIRE TV ZIMBABWE — Zimbabwe's Voice</title>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="icon" type="image/png" href="images/logo.png">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="js/firebase.js"></script>
-  <script src="js/youtube.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" defer></script>
+  <script src="js/firebase.js" defer></script>
+  <script src="js/youtube.js" defer></script>
 </head>
 <body class="light-mode">
 
@@ -208,150 +210,145 @@
       return date.toLocaleDateString();
     }
 
-    // Load home page data
-    document.addEventListener('DOMContentLoaded', async () => {
-      // Record page visit
-      if (typeof recordPageVisit === 'function') recordPageVisit();
-
-      // 1. Fetch news articles from Firestore (10 items)
-      const articles = await fsGetArticles(10);
-
-      // Populate breaking headlines ticker (first 5 articles)
-      const tickerTrack = document.getElementById('tickerTrack');
-      if (tickerTrack) {
-        articles.slice(0, 5).forEach(art => {
-          const span = document.createElement('span');
-          span.className = 'ticker-item';
-          span.innerHTML = `${art.title} <span class="ticker-separator">●</span>`;
-          tickerTrack.appendChild(span);
-        });
-      }
-
-      // Fetch YouTube uploads (10 items to allow backfilling if articles are < 10)
-      let videos = [];
-      if (typeof fsGetYouTubeVideosData === 'function') {
-        videos = await fsGetYouTubeVideosData(10);
-      }
-
-      // 2. Check if channel is LIVE NOW — shows red banner if so
-      checkChannelLiveState();
-      setInterval(checkChannelLiveState, 60000);
-
-      // 3. Mix articles and videos (Target: 10 articles, 3 videos; backfill with videos if articles are missing)
+    // Render Mixed Feed (Articles + Videos)
+    function renderMixedGrid(articles = [], videos = []) {
       const mixedGrid = document.getElementById('mixedFeedGrid');
-      if (mixedGrid) {
-        mixedGrid.innerHTML = '';
-        
-        let artIdx = 0;
-        let vidIdx = 0;
-        const mixedItems = [];
-        
-        // Slot blueprint for 13 items (~10 articles, 3 videos)
-        const slotTypes = [
-          'video',                                 // Slot 0 (Newest broadcast)
-          'article', 'article', 'article',         // Slots 1..3
-          'video',                                 // Slot 4
-          'article', 'article', 'article',         // Slots 5..7
-          'video',                                 // Slot 8
-          'article', 'article', 'article', 'article'// Slots 9..12
-        ];
+      if (!mixedGrid) return;
+      mixedGrid.innerHTML = '';
+      
+      let artIdx = 0;
+      let vidIdx = 0;
+      const mixedItems = [];
+      
+      const slotTypes = [
+        'video',                                 // Slot 0 (Newest broadcast)
+        'article', 'article', 'article',         // Slots 1..3
+        'video',                                 // Slot 4
+        'article', 'article', 'article',         // Slots 5..7
+        'video',                                 // Slot 8
+        'article', 'article', 'article', 'article'// Slots 9..12
+      ];
 
-        for (let s = 0; s < slotTypes.length; s++) {
-          const preferredType = slotTypes[s];
-          if (preferredType === 'article') {
-            if (artIdx < articles.length) {
-              mixedItems.push({ type: 'article', data: articles[artIdx++] });
-            } else if (vidIdx < videos.length) {
-              // Backfill with video when articles run out
-              mixedItems.push({ type: 'video', isNewest: (vidIdx === 0), data: videos[vidIdx++] });
-            }
-          } else {
-            if (vidIdx < videos.length) {
-              mixedItems.push({ type: 'video', isNewest: (vidIdx === 0), data: videos[vidIdx++] });
-            } else if (artIdx < articles.length) {
-              // Backfill with article if videos run out
-              mixedItems.push({ type: 'article', data: articles[artIdx++] });
-            }
-          }
-        }
-
-        // Append any remaining items if total items exceeded 13
-        while (artIdx < articles.length || vidIdx < videos.length) {
+      for (let s = 0; s < slotTypes.length; s++) {
+        const preferredType = slotTypes[s];
+        if (preferredType === 'article') {
           if (artIdx < articles.length) {
             mixedItems.push({ type: 'article', data: articles[artIdx++] });
           } else if (vidIdx < videos.length) {
             mixedItems.push({ type: 'video', isNewest: (vidIdx === 0), data: videos[vidIdx++] });
           }
-        }
-
-        if (mixedItems.length === 0) {
-          mixedGrid.innerHTML = '<p class="text-muted" style="grid-column:1/-1;text-align:center;padding:48px;">No featured stories or broadcasts available.</p>';
         } else {
-          mixedItems.forEach(item => {
-            if (item.type === 'article') {
-              const art = item.data;
-              const isPdf = art.type === 'pdf';
-              const bodyPreview = isPdf ? '📄 PDF Document — click to open' : (art.body || '').substring(0, 90) + '...';
-              
-              const card = document.createElement('div');
-              card.className = 'card';
-              card.style.cursor = 'pointer';
-              card.onclick = () => location.href = `news-article.html?id=${art.id}`;
-              card.innerHTML = `
-                <div class="card-img-wrap" style="aspect-ratio:16/9;">
-                  <img src="${art.image || 'https://placehold.co/600x400/cc0000/ffffff?text=MBIRE+TV'}" alt="${art.title}" loading="lazy">
-                  <span class="card-category" style="background:${isPdf ? '#CC0000' : 'var(--green)'}; font-size:0.6rem; padding:1px 6px;">${isPdf ? 'PDF' : (art.cat || 'General')}</span>
-                </div>
-                <div class="card-body" style="padding:10px 12px 12px;">
-                  <div class="card-meta" style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">
-                    <span><i class="far fa-clock"></i> ${timeAgo(art.date)}</span>
-                    <div style="display:flex; gap:6px;">
-                      <span><i class="far fa-eye"></i> ${(art.views || 0).toLocaleString()}</span>
-                      <span><i class="far fa-thumbs-up"></i> ${(art.likes || 0).toLocaleString()}</span>
-                    </div>
-                  </div>
-                  <h3 class="card-title" style="font-size:0.85rem; font-weight:700; margin:0 0 4px 0; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${art.title}</h3>
-                  <p class="card-excerpt" style="font-size:0.75rem; color:var(--text-dim); line-height:1.3; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${bodyPreview}</p>
-                </div>
-              `;
-              mixedGrid.appendChild(card);
-            } else {
-              const video = item.data;
-              const videoId = video.snippet?.resourceId?.videoId || video.id?.videoId || video.id;
-              const snippet = video.snippet || {};
-              const stats = video.statistics || {};
-              const viewCount = Number(stats.viewCount || 0).toLocaleString();
-              const likeCount = Number(stats.likeCount || 0).toLocaleString();
-              const thumb = snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || 'https://img.youtube.com/vi/' + videoId + '/maxresdefault.jpg';
-              const titleEscaped = (snippet.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-              
-              const card = document.createElement('div');
-              card.className = 'card';
-              card.style.cursor = 'pointer';
-              card.onclick = () => openVideoModal(videoId, titleEscaped);
-              card.innerHTML = `
-                <div class="card-img-wrap" style="position:relative; aspect-ratio:16/9;">
-                  <img src="${thumb}" alt="${snippet.title}" loading="lazy">
-                  <span class="card-category" style="background:var(--red); font-size: 0.6rem; padding:1px 6px; letter-spacing: 0.5px;">${item.isNewest ? '<i class="fas fa-bullhorn"></i> NEWEST' : '<i class="fab fa-youtube"></i> VIDEO'}</span>
-                  <div class="video-row-play" style="opacity:1; display:flex; align-items:center; justify-content:center; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:36px; height:36px; border-radius:50%; background:var(--red); color:#fff; font-size:0.9rem;"><i class="fas fa-play"></i></div>
-                </div>
-                <div class="card-body" style="padding:10px 12px 12px;">
-                  <div class="card-meta" style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">
-                    <span><i class="far fa-clock"></i> ${timeAgo(snippet.publishedAt)}</span>
-                    <div style="display:flex; gap:6px;">
-                      <span><i class="far fa-eye"></i> ${viewCount}</span>
-                      <span><i class="far fa-thumbs-up"></i> ${likeCount}</span>
-                    </div>
-                  </div>
-                  <h3 class="card-title" style="font-size:0.85rem; font-weight:700; margin:0 0 4px 0; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${snippet.title}</h3>
-                  <p class="card-excerpt" style="font-size:0.75rem; color:var(--text-muted); line-height:1.3; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${snippet.description || 'Watch broadcast video.'}</p>
-                </div>
-              `;
-              mixedGrid.appendChild(card);
-            }
-          });
+          if (vidIdx < videos.length) {
+            mixedItems.push({ type: 'video', isNewest: (vidIdx === 0), data: videos[vidIdx++] });
+          } else if (artIdx < articles.length) {
+            mixedItems.push({ type: 'article', data: articles[artIdx++] });
+          }
         }
       }
+
+      while (artIdx < articles.length || vidIdx < videos.length) {
+        if (artIdx < articles.length) {
+          mixedItems.push({ type: 'article', data: articles[artIdx++] });
+        } else if (vidIdx < videos.length) {
+          mixedItems.push({ type: 'video', isNewest: (vidIdx === 0), data: videos[vidIdx++] });
+        }
+      }
+
+      if (mixedItems.length === 0) {
+        mixedGrid.innerHTML = '<p class="text-muted" style="grid-column:1/-1;text-align:center;padding:48px;">No featured stories or broadcasts available.</p>';
+      } else {
+        mixedItems.forEach(item => {
+          if (item.type === 'article') {
+            const art = item.data;
+            const isPdf = art.type === 'pdf';
+            const bodyPreview = isPdf ? '📄 PDF Document — click to open' : (art.body || '').substring(0, 90) + '...';
+            
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.cursor = 'pointer';
+            card.onclick = () => location.href = `news-article.html?id=${art.id}`;
+            card.innerHTML = `
+              <div class="card-img-wrap" style="aspect-ratio:16/9;">
+                <img src="${art.image || 'https://placehold.co/600x400/cc0000/ffffff?text=MBIRE+TV'}" alt="${art.title}" loading="lazy">
+                <span class="card-category" style="background:${isPdf ? '#CC0000' : 'var(--green)'}; font-size:0.6rem; padding:1px 6px;">${isPdf ? 'PDF' : (art.cat || 'General')}</span>
+              </div>
+              <div class="card-body" style="padding:10px 12px 12px;">
+                <div class="card-meta" style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">
+                  <span><i class="far fa-clock"></i> ${timeAgo(art.date)}</span>
+                  <div style="display:flex; gap:6px;">
+                    <span><i class="far fa-eye"></i> ${(art.views || 0).toLocaleString()}</span>
+                    <span><i class="far fa-thumbs-up"></i> ${(art.likes || 0).toLocaleString()}</span>
+                  </div>
+                </div>
+                <h3 class="card-title" style="font-size:0.85rem; font-weight:700; margin:0 0 4px 0; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${art.title}</h3>
+                <p class="card-excerpt" style="font-size:0.75rem; color:var(--text-dim); line-height:1.3; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${bodyPreview}</p>
+              </div>
+            `;
+            mixedGrid.appendChild(card);
+          } else {
+            const video = item.data;
+            const videoId = video.snippet?.resourceId?.videoId || video.id?.videoId || video.id;
+            const snippet = video.snippet || {};
+            const stats = video.statistics || {};
+            const viewCount = Number(stats.viewCount || 0).toLocaleString();
+            const likeCount = Number(stats.likeCount || 0).toLocaleString();
+            const thumb = snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || 'https://img.youtube.com/vi/' + videoId + '/maxresdefault.jpg';
+            const titleEscaped = (snippet.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.cursor = 'pointer';
+            card.onclick = () => openVideoModal(videoId, titleEscaped);
+            card.innerHTML = `
+              <div class="card-img-wrap" style="position:relative; aspect-ratio:16/9;">
+                <img src="${thumb}" alt="${snippet.title}" loading="lazy">
+                <span class="card-category" style="background:var(--red); font-size: 0.6rem; padding:1px 6px; letter-spacing: 0.5px;">${item.isNewest ? '<i class="fas fa-bullhorn"></i> NEWEST' : '<i class="fab fa-youtube"></i> VIDEO'}</span>
+                <div class="video-row-play" style="opacity:1; display:flex; align-items:center; justify-content:center; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:36px; height:36px; border-radius:50%; background:var(--red); color:#fff; font-size:0.9rem;"><i class="fas fa-play"></i></div>
+              </div>
+              <div class="card-body" style="padding:10px 12px 12px;">
+                <div class="card-meta" style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">
+                  <span><i class="far fa-clock"></i> ${timeAgo(snippet.publishedAt)}</span>
+                  <div style="display:flex; gap:6px;">
+                    <span><i class="far fa-eye"></i> ${viewCount}</span>
+                    <span><i class="far fa-thumbs-up"></i> ${likeCount}</span>
+                  </div>
+                </div>
+                <h3 class="card-title" style="font-size:0.85rem; font-weight:700; margin:0 0 4px 0; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${snippet.title}</h3>
+                <p class="card-excerpt" style="font-size:0.75rem; color:var(--text-muted); line-height:1.3; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${snippet.description || 'Watch broadcast video.'}</p>
+              </div>
+            `;
+            mixedGrid.appendChild(card);
+          }
+        });
+      }
+    }
+
+    // Load home page data
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (typeof recordPageVisit === 'function') recordPageVisit();
+
+      // 1. INSTANT RENDER FROM CACHE (0ms delay)
+      const cachedArticles = JSON.parse(localStorage.getItem('mbire_articles') || '[]');
+      const cachedVideos = JSON.parse(sessionStorage.getItem('mbire_yt_cache_10') || '[]');
+      if (cachedArticles.length > 0 || cachedVideos.length > 0) {
+        renderMixedGrid(cachedArticles, cachedVideos);
+      }
+
+      // 2. PARALLEL NETWORK FETCH (Fire Firestore & YouTube API together)
+      const fetchArticlesPromise = fsGetArticles(10);
+      const fetchVideosPromise = (typeof fsGetYouTubeVideosData === 'function') ? fsGetYouTubeVideosData(10) : Promise.resolve([]);
+
+      const [freshArticles, freshVideos] = await Promise.all([fetchArticlesPromise, fetchVideosPromise]);
+
+      if (typeof initBreakingTicker === 'function') {
+        initBreakingTicker();
+      }
+
+      checkChannelLiveState();
+      setInterval(checkChannelLiveState, 60000);
+
+      // Render fresh stories
+      renderMixedGrid(freshArticles, freshVideos);
     });
   </script>
   <style>

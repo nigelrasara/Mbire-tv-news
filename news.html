@@ -4,13 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>News Articles — MBIRE TV ZIMBABWE</title>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link class="light-mode" rel="icon" type="image/png" href="images/logo.png">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="js/firebase.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" defer></script>
+  <script src="js/firebase.js" defer></script>
   <style>
     .search-filter-bar {
       display: flex;
@@ -274,18 +276,25 @@
 
     async function loadArticlesPage() {
       if (typeof recordPageVisit === 'function') recordPageVisit();
-      allArticles = await fsGetArticles(100);
-      
-      // Seed ticker with headings
-      const tickerTrack = document.getElementById('tickerTrack');
-      allArticles.slice(0, 5).forEach(art => {
-        const span = document.createElement('span');
-        span.className = 'ticker-item';
-        span.innerHTML = `${art.title} <span class="ticker-separator">●</span>`;
-        tickerTrack.appendChild(span);
-      });
 
-      renderGrid(allArticles);
+      // 1. INSTANT RENDER FROM CACHE (0ms delay)
+      const cached = JSON.parse(localStorage.getItem('mbire_articles') || '[]');
+      if (cached.length > 0) {
+        allArticles = cached;
+        renderGrid(allArticles);
+      }
+
+      // 2. FETCH FRESH ARTICLES IN BACKGROUND
+      const fresh = await fsGetArticles(100);
+      if (fresh && fresh.length > 0) {
+        allArticles = fresh;
+        renderGrid(allArticles);
+      }
+
+      // Seed ticker with headlines and videos
+      if (typeof initBreakingTicker === 'function') {
+        initBreakingTicker();
+      }
     }
 
     // Category filtering

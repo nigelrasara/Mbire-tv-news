@@ -2,42 +2,8 @@
 // Handles tab page loading transitions and cookie consent policies.
 
 document.addEventListener("DOMContentLoaded", () => {
-  // 1. Page transition loader fade-out on initial load
-  const loader = document.getElementById("page-transition-loader");
-  if (loader) {
-    setTimeout(() => {
-      loader.classList.add("fade-out");
-    }, 450); // fast loader fade out
-  }
+  // Page transition animations completely removed for instant response.
 
-  // 2. Intercept tab clicks for a smooth transition animation
-  const navLinks = document.querySelectorAll('a');
-  navLinks.forEach(link => {
-    const href = link.getAttribute('href');
-    const target = link.getAttribute('target');
-    
-    // Check if it's a relative link to another page on the site
-    if (href && 
-        !href.startsWith('http') && 
-        !href.startsWith('mailto') && 
-        !href.startsWith('tel') && 
-        !href.startsWith('#') && 
-        !href.startsWith('javascript:') &&
-        !link.hasAttribute('onclick') &&
-        target !== '_blank' &&
-        !link.classList.contains('no-transition')) {
-      
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (loader) {
-          loader.classList.remove("fade-out");
-        }
-        setTimeout(() => {
-          window.location.href = href;
-        }, 550); // redirect after transition animation runs
-      });
-    }
-  });
 
   // 3. Dynamic Cookie Consent Banner Injection
   if (!localStorage.getItem("cookieConsentAccepted")) {

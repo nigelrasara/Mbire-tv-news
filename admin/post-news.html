@@ -4,15 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Post News — MBIRE TV Admin</title>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="icon" type="image/png" href="../images/logo.png">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/admin.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-  <script src="../js/firebase.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js" defer></script>
+  <script src="../js/firebase.js" defer></script>
 </head>
 <body>
 
@@ -134,13 +136,13 @@
           </div>
 
           <div class="admin-card" style="margin-bottom:20px;">
-            <h3 class="admin-card-title">Upload Article Photo</h3>
+            <h3 class="admin-card-title">Upload Article Media (Photos / Videos)</h3>
 
             <div class="form-group">
               <div class="upload-zone" id="uploadZone">
                 <i class="fas fa-cloud-upload-alt upload-zone-icon"></i>
-                <p>Drag &amp; drop photos here or <strong>browse files</strong></p>
-                <input type="file" id="artImageFile" accept="image/*" multiple>
+                <p>Drag &amp; drop photos or videos here or <strong>browse files</strong></p>
+                <input type="file" id="artImageFile" accept="image/*,video/*" multiple>
               </div>
               <div class="upload-progress" id="uploadProgress">
                 <div class="upload-progress-bar" id="uploadProgressBar"></div>
@@ -207,11 +209,11 @@
     uploadZone.addEventListener('drop', (e) => {
       e.preventDefault();
       uploadZone.classList.remove('drag-over');
-      const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+      const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
       if (files.length) handleMultiImageUpload(files);
     });
     imageInput.addEventListener('change', (e) => {
-      const files = [...e.target.files].filter(f => f.type.startsWith('image/'));
+      const files = [...e.target.files].filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
       if (files.length) handleMultiImageUpload(files);
     });
 
@@ -222,7 +224,17 @@
       for (const file of files) {
         try {
           const url = await fsUploadImage(file);
-          uploadedImages.push({ url, name: file.name });
+          const isVid = file.type.startsWith('video/') || url.startsWith('data:video/') || url.includes('.mp4') || url.includes('.webm');
+          uploadedImages.push({ url, name: file.name, isVideo: isVid });
+
+          // Automatically set first uploaded media as the article cover image/video
+          if (!urlHidden.value) {
+            urlHidden.value = url;
+            if (!isVid) {
+              previewImg.src = url;
+              previewImg.style.display = 'block';
+            }
+          }
           done++;
           progressBar.style.width = Math.round((done / files.length) * 100) + '%';
         } catch (err) {
@@ -230,7 +242,7 @@
         }
       }
       renderGallery();
-      showToast(done + ' photo(s) uploaded!', '📸');
+      showToast(done + ' media file(s) uploaded successfully!', '📸');
       setTimeout(() => { progressDiv.style.display = 'none'; progressBar.style.width = '0%'; }, 800);
     }
 
@@ -243,15 +255,21 @@
       gallery.innerHTML = '';
       uploadedImages.forEach((img, idx) => {
         const isCover = urlHidden.value === img.url;
+        const isVid = img.isVideo || img.url.startsWith('data:video/') || img.url.includes('.mp4') || img.url.includes('.webm');
         const wrap = document.createElement('div');
-        wrap.style.cssText = 'position:relative;border-radius:8px;overflow:hidden;border:2px solid ' + (isCover ? '#CC0000' : '#DDE2EA') + ';';
+        wrap.style.cssText = 'position:relative;border-radius:8px;overflow:hidden;background:#000;border:2px solid ' + (isCover ? '#CC0000' : '#DDE2EA') + ';';
+        
+        const mediaHtml = isVid
+          ? `<video src="${img.url}" style="width:100%;height:80px;object-fit:cover;display:block;" muted></video><div style="position:absolute;top:2px;left:2px;background:#CC0000;color:#fff;font-size:0.55rem;padding:1px 4px;border-radius:3px;font-weight:700;">🎥 VIDEO</div>`
+          : `<img src="${img.url}" style="width:100%;height:80px;object-fit:cover;display:block;" title="${img.name}">`;
+
         wrap.innerHTML = `
-          <img src="${img.url}" style="width:100%;height:80px;object-fit:cover;display:block;" title="${img.name}">
+          ${mediaHtml}
           ${isCover ? '<div style="position:absolute;top:0;right:0;background:#CC0000;color:#fff;font-size:0.6rem;padding:2px 5px;font-weight:700;">COVER</div>' : ''}
-          <div style="display:flex;gap:2px;padding:4px;background:rgba(0,0,0,0.6);">
-            <button onclick="setCoverImage(${idx})" style="flex:1;background:#CC0000;border:none;color:#fff;border-radius:4px;font-size:0.6rem;cursor:pointer;padding:2px 0;">Cover</button>
-            <button onclick="insertInlineImage(${idx})" style="flex:1;background:#4A6CF7;border:none;color:#fff;border-radius:4px;font-size:0.6rem;cursor:pointer;padding:2px 0;">Insert</button>
-            <button onclick="removeGalleryImage(${idx})" style="background:#6B7280;border:none;color:#fff;border-radius:4px;font-size:0.6rem;cursor:pointer;padding:2px 5px;">✕</button>
+          <div style="display:flex;gap:2px;padding:4px;background:rgba(0,0,0,0.7);">
+            <button type="button" onclick="setCoverImage(${idx})" style="flex:1;background:#CC0000;border:none;color:#fff;border-radius:4px;font-size:0.6rem;cursor:pointer;padding:2px 0;">Cover</button>
+            <button type="button" onclick="insertInlineImage(${idx})" style="flex:1;background:#4A6CF7;border:none;color:#fff;border-radius:4px;font-size:0.6rem;cursor:pointer;padding:2px 0;">Insert</button>
+            <button type="button" onclick="removeGalleryImage(${idx})" style="background:#6B7280;border:none;color:#fff;border-radius:4px;font-size:0.6rem;cursor:pointer;padding:2px 5px;">✕</button>
           </div>
         `;
         gallery.appendChild(wrap);
@@ -260,17 +278,20 @@
 
     window.setCoverImage = function(idx) {
       const img = uploadedImages[idx]; if (!img) return;
-      urlHidden.value = img.url; previewImg.src = img.url; previewImg.style.display = 'block';
-      renderGallery(); showToast('Cover photo set!', '🖼️');
+      urlHidden.value = img.url;
+      if (!img.isVideo) {
+        previewImg.src = img.url; previewImg.style.display = 'block';
+      }
+      renderGallery(); showToast('Cover media set!', '🖼️');
     };
     window.insertInlineImage = function(idx) {
       const img = uploadedImages[idx]; if (!img) return;
       const bodyTA = document.getElementById('artBody'); if (!bodyTA) return;
-      const tag = `\n[image:${img.url}]\n`;
+      const tag = img.isVideo ? `\n[video:${img.url}]\n` : `\n[image:${img.url}]\n`;
       const s = bodyTA.selectionStart, e = bodyTA.selectionEnd;
       bodyTA.value = bodyTA.value.substring(0, s) + tag + bodyTA.value.substring(e);
       bodyTA.selectionStart = bodyTA.selectionEnd = s + tag.length;
-      bodyTA.focus(); showToast('Image tag inserted!', '✅');
+      bodyTA.focus(); showToast('Media tag inserted!', '✅');
     };
     window.removeGalleryImage = function(idx) {
       const removed = uploadedImages.splice(idx, 1)[0];
